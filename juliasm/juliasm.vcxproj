@@ -64,11 +64,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CApplication.cpp" />
+    <ClCompile Include="CBitmap.cpp" />
+    <ClCompile Include="CJuliasmApp.cpp" />
     <ClCompile Include="CPalette.cpp" />
     <ClCompile Include="juliasm.cpp" />
     <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CApplication.h" />
+    <ClInclude Include="CBitmap.h" />
+    <ClInclude Include="CJuliasmApp.h" />
     <ClInclude Include="CPalette.h" />
     <ClInclude Include="CPixelPoint.h" />
     <ClInclude Include="juliasm.h" />

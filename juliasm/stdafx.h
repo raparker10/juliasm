@@ -20,9 +20,13 @@
 #include <tchar.h>
 #include <immintrin.h>
 #include <math.h>
+#include <Windowsx.h>
 
 #include "juliasm.h"
 #include "CPalette.h"
+#include "CBitmap.h"
+#include "CApplication.h"
+#include "CJuliasmApp.h"
 
 
 // TODO: reference additional headers your program requires here
