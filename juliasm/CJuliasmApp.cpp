@@ -1,26 +1,42 @@
 #include "stdafx.h"
 
-/*TThreadInfo CJuliasmApp::m_ThreadInfoMand[MAX_MAND_THREADS];
-TThreadInfo CJuliasmApp::m_ThreadInfoJulia[MAX_JULIA_THREADS];
-*/
+INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+
+
+// application initialization
 CJuliasmApp::CJuliasmApp() 
 {
 	Initialize();
 };
+
+// application shutdown
 CJuliasmApp::~CJuliasmApp() 
 {
+	if (m_hfInfo != INVALID_HANDLE_VALUE)
+	{
+		DeleteObject(m_hfInfo);
+		m_hfInfo = (HFONT)INVALID_HANDLE_VALUE;
+	}
 };
 
+// initialize application member variables
 void CJuliasmApp::Initialize(void)
 {
+	// image panel size initialization
+	// These are not strictly needed due to processing of the WM_SIZE message
+	// that will automatically set them anyway
 	m_iMandWidth = FRACTAL_WIDTH_DEFAULT;
 	m_iMandHeight = FRACTAL_HEIGHT_DEFAULT;
 	m_iJuliaWidth = JULIA_WIDTH_DEFAULT;
 	m_iJuliaHeight = JULIA_HEIGHT_DEFAULT;
 	m_iJuliaLeft = m_iMandWidth;
 
+	// initialize mandelbrot calculation variables
+	// This functionality is packaged into a function so that 
+	// it is easily called separately from the program menu
 	InitializeMand();
 
+	// initialize julia set calculation variables
 	m_jc1_sse = -1.0;
 	m_jc2_sse = 1.0;
 	m_jd1_sse = -1.0;
@@ -30,18 +46,20 @@ void CJuliasmApp::Initialize(void)
 	m_iJMaxIter = 0;
 	m_iJMaxThread = 0;
 
+	// initialize thread-handling variables
 	m_iMandelbrotThreads = 0;
 	m_iJuliaThreads = 0;
 
+	// initialize status-keeping variables
 	for (int i = 0; i < _countof(m_iJuliaReady); ++i)
 	{
 		m_iJuliaReady[i] = 0;
 	}
-
-
 	m_iCalculatingJulia = 0;
 	m_iCalculatingMandelbrot = 0;
 	m_szMethod = "Undefined";
+
+	ZeroMemory(m_iJuliaReady, sizeof(m_iJuliaReady));
 
 	//
 	// setup the palette
@@ -73,20 +91,30 @@ void CJuliasmApp::Initialize(void)
 	// create a palette from the color points
 	m_PaletteDefault.UpdateColors();
 
+	// initialize the high-resolution timing functionality
 	QueryPerformanceFrequency(&m_ticksPerSecond);
 
-	ZeroMemory(m_iJuliaReady, sizeof(m_iJuliaReady));
-
+	// default the calculation "platform": None, x87, SSE, ... etc ...
 	m_CalcPlatformMand = CalcPlatform::None;
+
+	//
+	// initialize the font information
+	ZeroMemory(&m_ncm, sizeof(m_ncm));
+	ZeroMemory(&m_lfInfo, sizeof(m_lfInfo));
+	m_hfInfo = (HFONT)INVALID_HANDLE_VALUE;
+
 }
 
+// Initialize variables used for mandelbrot set calculation.
+// These are broken out separately so that they can be easily
+// reset from the main menu.
 void CJuliasmApp::InitializeMand(void)
 {
+	// Orbits will be calculated via a separate function, 
+	// so these variables will eltimately have to be removed
 	m_bSaveOrbit = 0;
 	m_iOrbitIndex = 0;;
 	m_iOrbitPoints = 1024;
-	//	m_orbit_c_sse[1024];
-	//	m_orbit_d_sse[1024];
 
 	// bounding box
 	m_a1 = -2.0f;
@@ -98,6 +126,9 @@ void CJuliasmApp::InitializeMand(void)
 	m_iMaxIterations = 1024;
 }
 
+// handle a mouse double-click.
+// Used to zoom into an image
+//
 bool CJuliasmApp::handle_lbuttondoubleclick(HWND hWnd, WPARAM wvKeyDown, WORD x, WORD y)
 {
 	double height, width, da, db, anew, bnew;
@@ -109,7 +140,7 @@ bool CJuliasmApp::handle_lbuttondoubleclick(HWND hWnd, WPARAM wvKeyDown, WORD x,
 		y = y - JULIA_TOP;
 
 		da = (m_a2 - m_a1) / m_iMandWidth;
-		db= (m_b2 - m_b1) / m_iMandHeight;
+		db = (m_b2 - m_b1) / m_iMandHeight;
 		width = m_a2 - m_a1;
 		height = m_b2 - m_b1;
 		anew = m_a1 + da * x;
@@ -124,32 +155,52 @@ bool CJuliasmApp::handle_lbuttondoubleclick(HWND hWnd, WPARAM wvKeyDown, WORD x,
 		m_b2 = m_b1 + height;
 
 		CalculateMandelbrot();
-
-/* RAP is this still needed?
-if (da < 0.00001)
-			PostMessage(hWnd, WM_COMMAND, IDM_CALCULATE_MAND_SSE2, 0);
-		else
-			PostMessage(hWnd, WM_COMMAND, IDM_CALCULATE_MAND_SSE, 0);
 		return true;
-		*/
 	}
 	return false;
 }
 
+//
+// Handle a repaint of the screen
+//
 bool CJuliasmApp::handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps) 
 { 
-	int iLines = 0;
+	int iLines = 0;		// number of lines drawn to the screen
 	char szBuf[256];
 
-	if (m_iCalculatingMandelbrot == 0)
+	// update the number of ticks per second for the high-resolution timer
+	// this is needed because the clock frequency can change dynamically
+	QueryPerformanceFrequency(&m_ticksPerSecond);
+
+	// only draw the mandelbrot image if it is not being calculated
+	if (0 == m_iCalculatingMandelbrot)
 	{
-		iLines = m_bmpMandelbrot.Show(hdc, 0, 50);
+		iLines = m_bmpMandelbrot.Show(hdc, 0, JULIA_TOP);
 	}
 
-	if (!m_iCalculatingJulia)
+	// only draw the julia set if it is not being calculated
+	if (0 == m_iCalculatingJulia)
 	{
-		iLines = m_bmpJulia.Show(hdc, m_iMandWidth, 50);
+		iLines = m_bmpJulia.Show(hdc, m_iMandWidth, JULIA_TOP);
 	}
+
+	//
+	// update the statistics being displayed on the screen
+	//
+
+	// clear the text panel areas
+	RECT rc;
+	GetClientRect(hWnd, &rc);
+	rc.bottom = JULIA_TOP;
+	FillRect(hdc, &rc, (HBRUSH)GetStockObject(WHITE_BRUSH));
+
+	// clear the area below the mandelbrot display
+	GetClientRect(hWnd, &rc);
+	rc.top = JULIA_TOP + m_iMandHeight;
+	rc.right = m_iMandWidth;
+	FillRect(hdc, &rc, (HBRUSH)GetStockObject(WHITE_BRUSH));
+
+/*
 	//		sprintf(buf, "Mandelbrot: Duration=%u:%u, Ticks Per Clock=%u:%u, da=%e, db=%e", tMandelbrotTotal.HighPart, tMandelbrotTotal.LowPart, ticksPerSecond.HighPart, ticksPerSecond.LowPart, ::da, ::db);
 	sprintf_s(szBuf, _countof(szBuf),"Mandelbrot: Duration=%u, Ticks Per Clock=%u:%u, da=%e, db=%e", m_tMandelbrotTotal.QuadPart, m_ticksPerSecond.HighPart, m_ticksPerSecond.LowPart, m_da, m_db);
 	TextOut(hdc, 0, 0, szBuf, lstrlen(szBuf));
@@ -164,11 +215,56 @@ bool CJuliasmApp::handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps)
 	// display the julia set parameters
 	sprintf_s(szBuf, _countof(szBuf),"Julia: Duration=%u ms  ", m_iTotalTicks.QuadPart);
 	TextOut(hdc, 0, 35, szBuf, lstrlen(szBuf));
+*/
+	//
+	// display information
+	//
+	int iLen;
+	HFONT hOldFont = (HFONT)SelectObject(hdc, m_hfInfo);
+	int y = JULIA_TOP + m_iMandHeight;
 
+	// mandelbrot section header
+	iLen = sprintf_s(szBuf, _countof(szBuf), "Mandelbrot - %s", m_szMethod);
+	ExtTextOut(hdc, 0, y, ETO_CLIPPED, &rc, szBuf, iLen, NULL);
+	y += m_tmInfo.tmHeight;
+
+	// mandelbrot image bounding box
+	iLen = sprintf_s(szBuf, _countof(szBuf), "Box (%02.2f, %02.2f)-(%02.2f, %02.2f)", m_a1, m_b1, m_a2, m_b2);
+	ExtTextOut(hdc, m_tmInfo.tmAveCharWidth, y, ETO_CLIPPED, &rc, szBuf, iLen, NULL);
+	y += m_tmInfo.tmHeight;
+
+	// mouse pointer location
+
+	iLen = sprintf_s(szBuf, _countof(szBuf), "Pointer (%02.4f, %02.4f)", m_ja_sse, m_jb_sse);
+	ExtTextOut(hdc, m_tmInfo.tmAveCharWidth, y, ETO_CLIPPED, &rc, szBuf, iLen, NULL);
+	y += m_tmInfo.tmHeight;
+
+	// last recalc duration
+	iLen = sprintf_s(szBuf, _countof(szBuf), "Recalc %lld ms", 1000 * m_tMandelbrotTotal.QuadPart / m_ticksPerSecond.QuadPart);
+	ExtTextOut(hdc, m_tmInfo.tmAveCharWidth, y, ETO_CLIPPED, &rc, szBuf, iLen, NULL);
+	y += m_tmInfo.tmHeight;
+	
+
+	SelectObject(hdc, hOldFont);
 	return true;
 }
+
+//
+// handle main window startup 
+//
 bool CJuliasmApp::handle_create(HWND hWnd, LPCREATESTRUCT *lpcs) 
 { 
+	// 
+	// create the font for information display
+	//
+	m_ncm.cbSize = sizeof(m_ncm);
+	SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(m_ncm), &m_ncm, 0);
+	m_hfInfo = CreateFontIndirect(&m_ncm.lfMessageFont);
+	HDC hdc = GetDC(hWnd);
+	GetTextMetrics(hdc, &m_tmInfo);
+	ReleaseDC(hWnd, hdc);
+
+
 	// create the julia thread pool
 	for (int i = 0; i < MAX_JULIA_THREADS; ++i)
 	{
@@ -176,32 +272,46 @@ bool CJuliasmApp::handle_create(HWND hWnd, LPCREATESTRUCT *lpcs)
 		m_ThreadInfoJulia[i].pApp = this;
 		m_hThreadJulia[i] = CreateThread(NULL, 1024, CalculateJuliaAVX, (LPVOID)&m_ThreadInfoJulia[i], 0, &m_dwThreadJuliaID[i]);
 	}
-	return true;
 
+	// request a redraw of the mandalbrot image
+	PostMessage(hWnd, WM_COMMAND, IDM_RECALCULATE_MAND, 0);
+	return true;
 }
 
+//
+// Initiate a mandelbrot recalculate using x87 math capabilities
+//
 void CJuliasmApp::StartMandelbrotx87(HWND hWnd)
 {
 	m_szMethod = "x87";
 	CalculateFractalX87();
 	InvalidateRect(hWnd, NULL, FALSE);
 }
+
+//
+// Initiate a mandelbrot recalculate using SSE math capabilities
+//
 void CJuliasmApp::StartMandelbrotSSE(HWND hWnd)
 {
+	// only recalculate if there is not an ongoing calculation
 	if (m_iCalculatingMandelbrot != 0)
 	{
 		MessageBeep(-1);
 		return;
 	}
 
-	m_iMandelbrotThreads = MAX_MAND_THREADS;
+	// setup performance measurement
 	SecureZeroMemory(m_hThreadMandelbrotSSE, sizeof(m_hThreadMandelbrotSSE));
 	SecureZeroMemory(&m_tMandelbrotStart, sizeof(m_tMandelbrotStart));
 	SecureZeroMemory(&m_tMandelbrotStop, sizeof(m_tMandelbrotStop));
 	SecureZeroMemory(&m_tMandelbrotTotal, sizeof(m_tMandelbrotTotal));
 	QueryPerformanceCounter(&m_tMandelbrotStart);
+
+	// save the platform type
 	m_szMethod = "SSE";
 
+	// create threads to perform the calculation
+	m_iMandelbrotThreads = MAX_MAND_THREADS;
 	for (int i = 0; i < m_iMandelbrotThreads; ++i)
 	{
 		InterlockedIncrement(&m_iCalculatingMandelbrot);
@@ -210,16 +320,25 @@ void CJuliasmApp::StartMandelbrotSSE(HWND hWnd)
 		m_hThreadMandelbrotSSE[i] = CreateThread(NULL, 1024, CalculateFractalSSE, (LPVOID)&m_ThreadInfoMand[i], 0, NULL);
 	}
 }
+
+//
+// Initiate a mandelbrot recalculate using SSE2 math capabilities
+//
 void CJuliasmApp::StartMandelbrotSSE2(HWND hWnd)
 {
+	// only recalculate if there is not an ongoing calculation
 	if (m_iCalculatingMandelbrot != 0)
 	{
 		MessageBeep(-1);
 		return;
 	}
+
+	// save the calculation platform
 	m_szMethod = "SSE2";
-	m_iMandelbrotThreads = MAX_MAND_THREADS;
+
+	// setup the performance counters
 	QueryPerformanceCounter(&m_tMandelbrotStart);
+	m_iMandelbrotThreads = MAX_MAND_THREADS;
 	for (int i = 0; i < m_iMandelbrotThreads; ++i)
 	{
 		InterlockedIncrement(&m_iCalculatingMandelbrot);
@@ -228,16 +347,32 @@ void CJuliasmApp::StartMandelbrotSSE2(HWND hWnd)
 		m_hThreadMandelbrotSSE[i] = CreateThread(NULL, 1024, CalculateFractalSSE2, (LPVOID)&m_ThreadInfoMand[i], 0, NULL);
 	}
 }
+
+
+//
+// Initiate a mandelbrot recalculate using AVX math capabilities
+// This function is a placeholder for future functionality.
+//
 void CJuliasmApp::StartMandelbrotAVX(HWND hWnd)
 {
 	MessageBox(hWnd, "Function not implemented.", "Error", MB_ICONINFORMATION | MB_OK);
 }
+
+
+//
+// Initiate a mandelbrot recalculate using AVX2 math capabilities
+// This function is a placeholder for future functionality.
+//
 void CJuliasmApp::StartMandelbrotAVX2(HWND hWnd)
 {
 	MessageBox(hWnd, "Function not implemented.", "Error", MB_ICONINFORMATION | MB_OK);
 }
 
-bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent) 
+
+//
+// handle command messages 
+//
+bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 { 
 	int i;
 
@@ -273,6 +408,10 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 		CalculateMandelbrot();
 		break;
 
+	case IDM_RECALCULATE_JULIA:
+		RecalculateJulia();
+		return true;
+
 	case IDM_THREADCOMPLETE:
 		InterlockedDecrement(&m_iCalculatingMandelbrot);
 		if (m_iCalculatingMandelbrot == 0)
@@ -289,6 +428,7 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 		break;
 
 	case IDM_THREADCOMPLETEJULIA:
+		// note: the julia calculation does not kill the threads.  they are reused for subsequent calculations
 		InterlockedDecrement(&m_iCalculatingJulia);
 		for (i = 0, m_iTotalTicks.QuadPart = 0; i < MAX_JULIA_THREADS; ++i)
 			m_iTotalTicks.QuadPart += m_iTicks[i].QuadPart;
@@ -304,75 +444,185 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 		DestroyWindow(get_hWnd());
 		break;
 
-	case IDM_ITERATIONS_64: m_jiMaxIterations = m_iMaxIterations = 64; break;
-	case IDM_ITERATIONS_128: m_jiMaxIterations = m_iMaxIterations = 128; break;
-	case IDM_ITERATIONS_256: m_jiMaxIterations = m_iMaxIterations = 256; break;
-	case IDM_ITERATIONS_512: m_jiMaxIterations = m_iMaxIterations = 512; break;
-	case IDM_ITERATIONS_1024: m_jiMaxIterations = m_iMaxIterations = 1024; break;
-	case IDM_ITERATIONS_2048: m_jiMaxIterations = m_iMaxIterations = 2048; break;
-	case IDM_ITERATIONS_4096: m_jiMaxIterations = m_iMaxIterations = 4096; break;
-	case IDM_ITERATIONS_8192: m_jiMaxIterations = m_iMaxIterations = 8192; break;
-	case IDM_ITERATIONS_16384: m_jiMaxIterations = m_iMaxIterations = 16384; break;
-	case IDM_ITERATIONS_32767: m_jiMaxIterations = m_iMaxIterations = 32768; break;
+	case IDM_ITERATIONS_64: m_jiMaxIterations = m_iMaxIterations = 64; PostRecalcAll(); break;
+	case IDM_ITERATIONS_128: m_jiMaxIterations = m_iMaxIterations = 128; PostRecalcAll(); break;
+	case IDM_ITERATIONS_256: m_jiMaxIterations = m_iMaxIterations = 256; PostRecalcAll(); break;
+	case IDM_ITERATIONS_512: m_jiMaxIterations = m_iMaxIterations = 512; PostRecalcAll(); break;
+	case IDM_ITERATIONS_1024: m_jiMaxIterations = m_iMaxIterations = 1024; PostRecalcAll(); break;
+	case IDM_ITERATIONS_2048: m_jiMaxIterations = m_iMaxIterations = 2048; PostRecalcAll(); break;
+	case IDM_ITERATIONS_4096: m_jiMaxIterations = m_iMaxIterations = 4096; PostRecalcAll(); break;
+	case IDM_ITERATIONS_8192: m_jiMaxIterations = m_iMaxIterations = 8192;  PostRecalcAll(); break;
+	case IDM_ITERATIONS_16384: m_jiMaxIterations = m_iMaxIterations = 16384;  PostRecalcAll(); break;
+	case IDM_ITERATIONS_32767: m_jiMaxIterations = m_iMaxIterations = 32768; PostRecalcAll();  break;
 
 	default:
 		return false;
 	}
 	return true;
 }
+
+void CJuliasmApp::PostRecalcMand(void)
+{
+	PostMessage(get_hWnd(), WM_COMMAND, IDM_RECALCULATE_MAND, 0);
+}
+void CJuliasmApp::PostRecalcJulia(void)
+{
+	PostMessage(get_hWnd(), WM_COMMAND, IDM_RECALCULATE_JULIA , 0);
+}
+void CJuliasmApp::PostRecalcAll(void)
+{
+	PostRecalcMand();
+	PostRecalcJulia();
+}
+
+//
+// handle keydown messages - not currently needed
+//
 bool CJuliasmApp::handle_keydown(HWND hWnd, int iVKey) 
 { 
 	return false; 
 }
+
+//
+// handle characters presses.  not currently needed
+//
 bool CJuliasmApp::handle_char(HWND hWnd, int iChar) 
 { 
 	return false; 
 }
+
+//
+// handle vertical scroll messages.  not currently needed
+//
 bool CJuliasmApp::handle_vscroll(HWND hWnd, int iScrollRequest, int iScrollPosition) 
 { 
 	return false; 
 }
+
+//
+// handle window resizing
+//
 bool CJuliasmApp::handle_size(HWND hWnd, HDC hdc, int iSizeType, int iWidth, int iHeight) 
 { 
+	// only respond to messages if the right type of resize messages are sent
 	if (iSizeType == SIZE_MAXIMIZED || iSizeType == SIZE_MAXSHOW || iSizeType == SIZE_RESTORED)
 	{
+		// make sure the image with is a multiple of 4 (RAP this should probably be converted to 8 for AVX32)
 		m_iMandHeight = m_iMandWidth = (iWidth / 4) - (iWidth / 4 % 4);
 		m_iJuliaHeight = iHeight;
 		m_iJuliaWidth = iWidth - m_iMandWidth;
 
+		// RAP: consider adding logic to make sure pixels are square. the delta should be the smaller of da and db
+
+		// resize the bitmap images
 		m_bmpMandelbrot.Resize(hWnd, m_iMandWidth, m_iMandHeight);
 		m_bmpJulia.Resize(hWnd, m_iJuliaWidth, m_iJuliaHeight);
+
+		// redraw the images
+		PostMessage(hWnd, WM_COMMAND, IDM_RECALCULATE_MAND, 0);
 		return true;
 	}
 	return false;
 }
-bool CJuliasmApp::handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y) 
-{ 
-	int i;
 
-	if (m_iCalculatingJulia || m_iCalculatingMandelbrot)
-		return false;
-
-	m_iJuliaThreads = MAX_JULIA_THREADS;
-
-	y = y - JULIA_TOP;
-
-	m_ja_sse = (float)m_a1 + (m_a2 - m_a1) / m_iMandWidth * x;
-	m_jb_sse = (float)m_b1 + (m_b2 - m_b1) / m_iMandHeight * y;
-	for (i = 0; i < m_iJuliaThreads; ++i)
+// 
+// calculates the julia set using current parameters
+//
+bool CJuliasmApp::RecalculateJulia(void)
+{
+	// initiate the calculation on all threads
+	for (int i = 0; i < m_iJuliaThreads; ++i)
 	{
+		// indicate the julia calculation is starting
 		InterlockedIncrement(&m_iCalculatingJulia);
+
+		// wait for a 'ready' state
 		while (m_iJuliaReady[i] == 0)
 		{
 			Sleep(100);
 		}
+
+		// start the calculation
 		if (0 == PostThreadMessage(m_dwThreadJuliaID[i], WM_COMMAND, 1, 0))
 		{
-			MessageBox(hWnd, "PostThreadMessage failed.", "Calculate Julia", MB_OK);
+			MessageBox(get_hWnd(), "PostThreadMessage failed.", "Calculate Julia", MB_OK);
 		}
 	}
 	return true;
 }
+//
+// handlemounse moves
+//
+bool CJuliasmApp::handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y) 
+{ 
+	int i;
+
+	// don't respond to mouse moves if the image is currently recalculating
+	if (m_iCalculatingJulia || m_iCalculatingMandelbrot)
+		return false;
+
+	// make sure the correct number of threads is being used
+	m_iJuliaThreads = MAX_JULIA_THREADS;
+
+	// adjust the location of the display to the correct location
+	y = y - JULIA_TOP;
+
+	// determine the numerical (not pixel) location of the mouse pointer
+	m_ja_sse = (float)(m_a1 + (m_a2 - m_a1) / m_iMandWidth * x);
+	m_jb_sse = (float)(m_b1 + (m_b2 - m_b1) / m_iMandHeight * y);
+
+	return RecalculateJulia();
+}
+
+//
+// handle mouse wheel events
+// The mouse wheel is used to zoom into the mandelbrot set image.
+// RAP: consider using the mouse wheel to also zoom into the Julia set image
+//
+bool CJuliasmApp::handle_mousewheel(HWND hWnd, WORD wvKeys, int iRotationAmount, int x, int y)
+{
+	double height, width, da, db, anew, bnew;
+
+	// only handle the message if the mandelbrot set is not currently being calculated
+	if (m_iCalculatingMandelbrot == 0)
+	{
+		// determine how far the wheel has rotated
+		iRotationAmount = iRotationAmount / WHEEL_DELTA;
+
+		// adjust the location for the top of the image
+		y = y - JULIA_TOP;
+
+		// calculate the new image boundaries
+		da = (m_a2 - m_a1) / m_iMandWidth;
+		db = (m_b2 - m_b1) / m_iMandHeight;
+		width = m_a2 - m_a1;
+		height = m_b2 - m_b1;
+		anew = m_a1 + da * x;
+		bnew = m_b1 + db * y;
+
+		// zoom into (or out of) the image
+		if (iRotationAmount < 0)
+		{
+			width = width * 1.1;
+			height = height * 1.1;
+		}
+		else
+		{
+			width = width * 0.95;
+			height = height * 0.95;
+		}
+		m_a1 = anew - (width / 2.0);
+		m_a2 = m_a1 + width;
+
+		m_b1 = bnew - (height / 2.0);
+		m_b2 = m_b1 + height;
+
+		// request a redraw with the new parameters
+		PostMessage(hWnd, WM_COMMAND, IDM_RECALCULATE_MAND, 0);
+	}
+	return true;
+}
+
 void CJuliasmApp::CalculateMandelbrot(void)
 {
 	switch (get_CalcPlatformMand())
@@ -452,8 +702,6 @@ restart:
 	const __declspec(align(32)) float b_avx[POINTS_CONCURRENT_AVX32] = { pApp->m_jb_sse, pApp->m_jb_sse, pApp->m_jb_sse, pApp->m_jb_sse, pApp->m_jb_sse, pApp->m_jb_sse, pApp->m_jb_sse, pApp->m_jb_sse };
 	__declspec(align(32)) float dc_avx[POINTS_CONCURRENT_AVX32] = { 8.0f * fdc, 8.0f * fdc, 8.0f * fdc, 8.0f * fdc, 8.0f * fdc, 8.0f * fdc, 8.0f * fdc, 8.0f * fdc };
 	__declspec(align(32)) float ic_avx[POINTS_CONCURRENT_AVX32] = { pApp->m_jc1_sse, pApp->m_jc1_sse + 1.0f * fdc, pApp->m_jc1_sse + 2.0f * fdc, pApp->m_jc1_sse + 3.0f * fdc, pApp->m_jc1_sse + 4.0f * fdc, pApp->m_jc1_sse + 5.0f * fdc, pApp->m_jc1_sse + 6.0f * fdc, pApp->m_jc1_sse + 7.0f * fdc };
-	__declspec(align(32)) float c_avx[POINTS_CONCURRENT_AVX32];
-	__declspec(align(32)) float d_avx[POINTS_CONCURRENT_AVX32];
 
 	const __declspec(align(32)) float maximum_avx[POINTS_CONCURRENT_AVX32] = { 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f };
 	__declspec(align(32)) float iterations_avx[POINTS_CONCURRENT_AVX32];
@@ -486,9 +734,6 @@ restart:
 
 	// load the zero array
 	__m256 zero = _mm256_load_ps(zero_avx);
-
-
-	__declspec(align(32)) float mag_avx[POINTS_CONCURRENT_AVX32];
 
 	for (y = startY; y < stopY; ++y)
 	{
@@ -588,7 +833,6 @@ DWORD WINAPI CJuliasmApp::CalculateFractalSSE(void* pArguments)
 
 	double fThreadHeight = (pApp->m_b2 - pApp->m_b1) / pApp->m_iMandelbrotThreads;
 
-	__declspec(align(16)) float a_sse[POINTS_CONCURRENT_SSE];
 	__declspec(align(16)) float b_sse[POINTS_CONCURRENT_SSE];
 	__declspec(align(16)) float maximum_sse[POINTS_CONCURRENT_SSE];
 	__declspec(align(16)) float iterations_sse[POINTS_CONCURRENT_SSE];
@@ -648,10 +892,10 @@ DWORD WINAPI CJuliasmApp::CalculateFractalSSE(void* pArguments)
 			__asm movaps oword ptr[iterations_sse], xmm6
 
 			// normalize the iteration values between 0 and 255
-			l_ppvBits[iIndex++] = (iterations_sse[0] == pApp->m_iMaxIterations) ? 0 : pApp->m_PaletteDefault.get_Color(iterations_sse[0]);
-			l_ppvBits[iIndex++] = (iterations_sse[1] == pApp->m_iMaxIterations) ? 0 : pApp->m_PaletteDefault.get_Color(iterations_sse[1]);
-			l_ppvBits[iIndex++] = (iterations_sse[2] == pApp->m_iMaxIterations) ? 0 : pApp->m_PaletteDefault.get_Color(iterations_sse[2]);
-			l_ppvBits[iIndex++] = (iterations_sse[3] == pApp->m_iMaxIterations) ? 0 : pApp->m_PaletteDefault.get_Color(iterations_sse[3]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[0]) == pApp->m_iMaxIterations) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[0]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[1]) == pApp->m_iMaxIterations) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[1]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[2]) == pApp->m_iMaxIterations) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[2]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[3]) == pApp->m_iMaxIterations) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[3]);
 
 			// update the real components
 			__asm {
@@ -787,7 +1031,6 @@ DWORD WINAPI CJuliasmApp::CalculateFractalSSE2(void* pArguments)
 
 	double fThreadHeight = (pApp->m_b2 - pApp->m_b1) / pApp->m_iMandelbrotThreads;
 
-	__declspec(align(16)) double a_sse2[POINTS_CONCURRENT_SSE2];
 	__declspec(align(16)) double b_sse2[POINTS_CONCURRENT_SSE2];
 	__declspec(align(16)) double maximum_sse2[POINTS_CONCURRENT_SSE2] = { 4.0f, 4.0f };
 	__declspec(align(16)) double iterations_sse2[POINTS_CONCURRENT_SSE2];
@@ -856,8 +1099,8 @@ DWORD WINAPI CJuliasmApp::CalculateFractalSSE2(void* pArguments)
 
 
 			// normalize the iteration values between 0 and 255
-			l_ppvBits[iIndex++] = (iterations_sse2[0] == pApp->m_iMaxIterations) ? 0 : pApp->m_PaletteDefault.get_Color(iterations_sse2[0]);
-			l_ppvBits[iIndex++] = (iterations_sse2[1] == pApp->m_iMaxIterations) ? 0 : pApp->m_PaletteDefault.get_Color(iterations_sse2[1]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse2[0]) == pApp->m_iMaxIterations) ? 0 : pApp->m_PaletteDefault.get_Color(((int)iterations_sse2[0]));
+			l_ppvBits[iIndex++] = (((int)iterations_sse2[1]) == pApp->m_iMaxIterations) ? 0 : pApp->m_PaletteDefault.get_Color(((int)iterations_sse2[1]));
 
 			// update the real components
 			__asm {
@@ -1037,4 +1280,25 @@ void CJuliasmApp::CalculateFractalX87(void)
 	}
 	QueryPerformanceCounter(&tStop);
 	m_tTotal.QuadPart = tStop.QuadPart - tStart.QuadPart;
+}
+
+
+// Message handler for about box.
+INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(lParam);
+	switch (message)
+	{
+	case WM_INITDIALOG:
+		return (INT_PTR)TRUE;
+
+	case WM_COMMAND:
+		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+		{
+			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		}
+		break;
+	}
+	return (INT_PTR)FALSE;
 }

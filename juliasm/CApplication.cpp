@@ -85,7 +85,17 @@ LRESULT CALLBACK CApplication::MessageProc(HWND hWnd, UINT message, WPARAM wPara
 		break;
 
 	case WM_LBUTTONDBLCLK:
-		if (pApp->handle_lbuttondoubleclick(hWnd, wParam, LOWORD(lParam), HIWORD(lParam)))
+		if (pApp->handle_lbuttondoubleclick(hWnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)))
+			return 0;
+		break;
+
+	case WM_MOUSEWHEEL:
+		if (pApp->handle_mousewheel(
+				hWnd, 
+				GET_KEYSTATE_WPARAM(wParam), // virtyal keys pressed
+				GET_WHEEL_DELTA_WPARAM(wParam), // number of 'ticks' of rotation
+				GET_X_LPARAM(lParam),
+				GET_Y_LPARAM(lParam)))
 			return 0;
 		break;
 

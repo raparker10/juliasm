@@ -28,4 +28,5 @@ public:
 	virtual bool handle_size(HWND hWnd, HDC hdc, int iSizeType, int iWidth, int iHeight) { return false; }
 	virtual bool handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y) { return false; }
 	virtual bool handle_lbuttondoubleclick(HWND hWnd, WPARAM wvKeyDown, WORD x, WORD y) { return false; }
+	virtual bool handle_mousewheel(HWND hWnd, WORD wvKeys, int iRotationAmount, int x, int y) { return false; }
 };

@@ -30,6 +30,15 @@ class CJuliasmApp : public CApplication {
 	DWORD  m_dwThreadJuliaID[MAX_JULIA_THREADS];
 	CalcPlatform m_CalcPlatformMand;
 	CalcPlatform m_CalcPlatformJulia;
+
+	//
+	// Font(s) for displaying text
+	//
+	NONCLIENTMETRICS m_ncm;
+	LOGFONT m_lfInfo;
+	HFONT m_hfInfo;
+	TEXTMETRIC m_tmInfo;
+
 	//
 	// bitmaps to hold the mandelbrot and julia images
 	//
@@ -88,7 +97,7 @@ class CJuliasmApp : public CApplication {
 
 	// per-pixel offsets in the horizontal (da) and vertical (db) directions
 	 double m_da, m_db;
-	 unsigned int m_iMaxIterations;
+	 int m_iMaxIterations;
 
 	 volatile LONG m_iCalculatingJulia;
 	 volatile LONG m_iCalculatingMandelbrot;
@@ -114,7 +123,13 @@ public:
 	virtual bool handle_size(HWND hWnd, HDC hdc, int iSizeType, int iWidth, int iHeight);
 	virtual bool handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y);
 	virtual bool handle_lbuttondoubleclick(HWND hWnd, WPARAM wvKeyDown, WORD x, WORD y);
+	virtual bool handle_mousewheel(HWND hWnd, WORD wvKeys, int iRotationAmount, int x, int y);
 
+	void PostRecalcMand(void);
+	void PostRecalcJulia(void);
+	void PostRecalcAll(void);
+
+	bool RecalculateJulia(void);
 
 	inline CalcPlatform get_CalcPlatformMand(void) const {
 		return m_CalcPlatformMand;
