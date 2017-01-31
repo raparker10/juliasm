@@ -33,6 +33,12 @@
     <ClCompile Include="CJuliasmApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="cpu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CJuliasmApp_Calc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CPalette.h">
@@ -60,6 +66,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CJuliasmApp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cpu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

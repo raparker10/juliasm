@@ -22,6 +22,8 @@ enum CalcPlatform {
 	NUMBER_CALC_PLATFORMS,
 };
 
+#define THREAD_STACK_SIZE 1024
+
 class CJuliasmApp : public CApplication {
 
 	TThreadInfo m_ThreadInfoMand[MAX_MAND_THREADS];
@@ -65,7 +67,7 @@ class CJuliasmApp : public CApplication {
 	 float m_jc1_sse, m_jc2_sse;
 	 float m_jd1_sse, m_jd2_sse;
 
-	 int m_jiMaxIterations;
+	 int m_iMaxIterationsJulia;
 	 int m_iJMaxIter;
 	 int m_iJMaxThread;
 
@@ -77,8 +79,8 @@ class CJuliasmApp : public CApplication {
 	//
 	// Thread management
 	//
-	 LONG m_iMandelbrotThreads;
-	 LONG m_iJuliaThreads;
+	 LONG m_iMandelbrotThreadCount;
+	 LONG m_iJuliaThreadCount;
 	 LONG m_iJuliaReady[MAX_JULIA_THREADS];
 
 	//
@@ -97,13 +99,19 @@ class CJuliasmApp : public CApplication {
 
 	// per-pixel offsets in the horizontal (da) and vertical (db) directions
 	 double m_da, m_db;
-	 int m_iMaxIterations;
+	 int m_iMaxIterationsMand;
 
 	 volatile LONG m_iCalculatingJulia;
 	 volatile LONG m_iCalculatingMandelbrot;
-	 LARGE_INTEGER m_tMandelbrotStart, m_tMandelbrotStop, m_tMandelbrotTotal;
+	 LARGE_INTEGER m_tMandelbrotStart, m_tMandelbrotStop, m_tMandelbrotDuration[MAX_MAND_THREADS], tMandelbrotDurationTotal;
 	 char *m_szMethod;
 	 HANDLE m_hThreadMandelbrotSSE[MAX_MAND_THREADS];
+
+	 //
+	 // CPU feature identification
+	 //
+	CCPU cpu;
+
 
 	void Initialize(void);
 	void InitializeMand(void);
@@ -131,18 +139,33 @@ public:
 
 	bool RecalculateJulia(void);
 
+	void UpdateCalcPlatformMenuMand();
+	void UpdateCalcPlatformMenuJulia();
+
+	char *get_CalcPlatformName(char *szBuf, size_t iLen, CalcPlatform cp);
+
 	inline CalcPlatform get_CalcPlatformMand(void) const {
 		return m_CalcPlatformMand;
 	}
-	void put_CalcPlatofrmMand(CalcPlatform cp) {
+
+	void put_CalcPlatformMand(CalcPlatform cp) {
 		m_CalcPlatformMand = cp;
+		UpdateCalcPlatformMenuMand();
 	}
 	inline CalcPlatform get_CalcPlatformJulia(void) const {
 		return m_CalcPlatformJulia;
 	}
-	void put_CalcPlatoformJulia(CalcPlatform cp) {
+	void put_CalcPlatformJulia(CalcPlatform cp) {
 		m_CalcPlatformJulia = cp;
+		UpdateCalcPlatformMenuJulia();
 	}
+
+	void put_MaxIterationsMand(int iMaxIterationsMand);
+	inline int get_MaxIterationsMand(void) const { return this->m_iMaxIterationsMand; }
+
+	void put_MaxIterationsJulia(int iMaxIterationsJulia);
+	inline int get_MaxIterationsJulia(void) const { return this->m_iMaxIterationsJulia; }
+
 	static DWORD WINAPI CJuliasmApp::CalculateJuliaAVX(void* pArguments);
 
 	void CalculateMandelbrot(void);
@@ -152,16 +175,12 @@ public:
 	void StartMandelbrotAVX(HWND hWnd);
 	void StartMandelbrotAVX2(HWND hWnd);
 
-	static DWORD WINAPI CJuliasmApp::CalculateFractalSSE(void* pArguments);
-	void CJuliasmApp::CalculatePointsSSE(void);
+	static DWORD WINAPI CJuliasmApp::CalculateMandSSE(void* pArguments);
+	void CJuliasmApp::CalculateMandPointsSSE(void);
 
-	void CalculateFractalX87(void); // Note: single-threaded
+	void CalculateMandX87(void); // Note: single-threaded
 
-	static DWORD WINAPI CalculateFractalSSE2(void* pArguments);
-	void CalculatePointsSSE2(void);
-
-
-
-
+	static DWORD WINAPI CalculateMandSSE2(void* pArguments);
+	void CalculateMandPointsSSE2(void);
 
 };

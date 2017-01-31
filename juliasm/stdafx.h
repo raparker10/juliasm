@@ -22,6 +22,7 @@
 #include <math.h>
 #include <Windowsx.h>
 
+#include "cpu.h"
 #include "juliasm.h"
 #include "CPalette.h"
 #include "CBitmap.h"

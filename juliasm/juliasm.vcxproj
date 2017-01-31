@@ -67,7 +67,9 @@
     <ClCompile Include="CApplication.cpp" />
     <ClCompile Include="CBitmap.cpp" />
     <ClCompile Include="CJuliasmApp.cpp" />
+    <ClCompile Include="CJuliasmApp_Calc.cpp" />
     <ClCompile Include="CPalette.cpp" />
+    <ClCompile Include="cpu.cpp" />
     <ClCompile Include="juliasm.cpp" />
     <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
@@ -77,6 +79,7 @@
     <ClInclude Include="CJuliasmApp.h" />
     <ClInclude Include="CPalette.h" />
     <ClInclude Include="CPixelPoint.h" />
+    <ClInclude Include="cpu.h" />
     <ClInclude Include="juliasm.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
