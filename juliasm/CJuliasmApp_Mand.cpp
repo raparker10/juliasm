@@ -70,7 +70,9 @@ void CJuliasmApp::CalculateMandX87(void)
 	}
 	// stop the performance counter
 	QueryPerformanceCounter(&tStop);
-	m_tMandelbrotThreadDuration[iThreadIndex].QuadPart = tStop.QuadPart - tStart.QuadPart;
+	m_tMandelbrotProcessDurationTotal.QuadPart 
+		= m_tMandelbrotThreadDurationTotal.QuadPart 
+		= m_tMandelbrotThreadDuration[iThreadIndex].QuadPart = tStop.QuadPart - tStart.QuadPart;
 }
 // inputs
 // a's in xmm3
