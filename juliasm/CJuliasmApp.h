@@ -60,6 +60,31 @@ class CJuliasmApp : public CApplication {
 	 LARGE_INTEGER m_iTicks[MAX_JULIA_THREADS];
 	 LARGE_INTEGER m_iTotalTicks;
 
+	 // since there are (potentially) multiple threads, it is important to track both the 
+	 // clock time (the amount of time that has passed for the operator), and the 
+	 // total thread working duration.  The ratio of these two durations is how effective
+	 // multi-threading is.
+ 	 LARGE_INTEGER 
+			// worker thread duration tracking
+			m_tMandelbrotThreadDuration[MAX_MAND_THREADS],		// duration of each thread
+			m_tMandelbrotThreadDurationTotal,					// total duration of all threads
+
+			// duration experienced by the operator - clock time
+			m_tMandelbrotProcessStart,									// start time of all worker threads
+			m_tMandelbrotProcessStop,									// stop time of all worker threads
+			m_tMandelbrotProcessDurationTotal;							// total clock duration
+
+
+ 	 LARGE_INTEGER 
+			// worker thread duration tracking
+			m_tJuliaThreadDuration[MAX_MAND_THREADS],		// duration of each thread
+			m_tJuliaThreadDurationTotal,					// total duration of all threads
+
+			// duration experienced by the operator - clock time
+			m_tJuliaProcessStart,									// start time of all worker threads
+			m_tJuliaProcessStop,									// stop time of all worker threads
+			m_tJuliaProcessDurationTotal;							// total clock duration
+
 	//
 	// Julia set parameters
 	//
@@ -87,13 +112,6 @@ class CJuliasmApp : public CApplication {
 	// SSE variables
 	//
 
-	// orbit saving
-	 unsigned short m_bSaveOrbit;
-	 unsigned short m_iOrbitIndex;
-	 unsigned short m_iOrbitPoints;
-	 float m_orbit_c_sse[1024];
-	 float m_orbit_d_sse[1024];
-
 	// bounding box
 	 double m_a1, m_a2, m_b1, m_b2;
 
@@ -103,7 +121,7 @@ class CJuliasmApp : public CApplication {
 
 	 volatile LONG m_iCalculatingJulia;
 	 volatile LONG m_iCalculatingMandelbrot;
-	 LARGE_INTEGER m_tMandelbrotStart, m_tMandelbrotStop, m_tMandelbrotDuration[MAX_MAND_THREADS], tMandelbrotDurationTotal;
+
 	 char *m_szMethod;
 	 HANDLE m_hThreadMandelbrotSSE[MAX_MAND_THREADS];
 
@@ -119,8 +137,6 @@ class CJuliasmApp : public CApplication {
 public:
 	CJuliasmApp();
 	~CJuliasmApp();
-
-	static HWND get_hwnd(void) { return m_hWnd; }
 
 	virtual bool handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps);
 	virtual bool handle_create(HWND hWnd, LPCREATESTRUCT *lpcs);

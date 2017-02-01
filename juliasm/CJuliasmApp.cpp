@@ -111,11 +111,6 @@ void CJuliasmApp::Initialize(void)
 // reset from the main menu.
 void CJuliasmApp::InitializeMand(void)
 {
-	// Orbits will be calculated via a separate function, 
-	// so these variables will eltimately have to be removed
-	m_bSaveOrbit = 0;
-	m_iOrbitIndex = 0;;
-	m_iOrbitPoints = 1024;
 
 	// bounding box
 	m_a1 = -2.0f;
@@ -250,7 +245,12 @@ bool CJuliasmApp::handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps)
 	y += m_tmInfo.tmHeight;
 
 	// last recalc duration
-	iLen = sprintf_s(szBuf, _countof(szBuf), "Recalc %lld ms", 1000 * tMandelbrotDurationTotal.QuadPart / m_ticksPerSecond.QuadPart);
+	iLen = sprintf_s(szBuf, _countof(szBuf), "Clock Time %lld ms", 1000 * m_tMandelbrotProcessDurationTotal.QuadPart / m_ticksPerSecond.QuadPart);
+	ExtTextOut(hdc, m_tmInfo.tmAveCharWidth, y, ETO_CLIPPED, &rc, szBuf, iLen, NULL);
+	y += m_tmInfo.tmHeight;
+
+	// last recalc thread working duration
+	iLen = sprintf_s(szBuf, _countof(szBuf), "Thread Time %lld ms", 1000 * m_tMandelbrotThreadDurationTotal.QuadPart / m_ticksPerSecond.QuadPart);
 	ExtTextOut(hdc, m_tmInfo.tmAveCharWidth, y, ETO_CLIPPED, &rc, szBuf, iLen, NULL);
 	y += m_tmInfo.tmHeight;
 
@@ -277,6 +277,17 @@ bool CJuliasmApp::handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps)
 	iLen = sprintf_s(szBuf, _countof(szBuf), "Box (%02.2f, %02.2f)-(%02.2f, %02.2f)", m_jc1_sse, m_jd1_sse, m_jc2_sse, m_jd2_sse);
 	ExtTextOut(hdc, m_tmInfo.tmAveCharWidth, y, ETO_CLIPPED, &rc, szBuf, iLen, NULL);
 	y += m_tmInfo.tmHeight;
+
+	// last recalc duration
+	iLen = sprintf_s(szBuf, _countof(szBuf), "Clock Time %lld ms", 1000 * m_tJuliaProcessDurationTotal.QuadPart / m_ticksPerSecond.QuadPart);
+	ExtTextOut(hdc, m_tmInfo.tmAveCharWidth, y, ETO_CLIPPED, &rc, szBuf, iLen, NULL);
+	y += m_tmInfo.tmHeight;
+
+	// last recalc thread working duration
+	iLen = sprintf_s(szBuf, _countof(szBuf), "Thread Time %lld ms", 1000 * m_tJuliaThreadDurationTotal.QuadPart / m_ticksPerSecond.QuadPart);
+	ExtTextOut(hdc, m_tmInfo.tmAveCharWidth, y, ETO_CLIPPED, &rc, szBuf, iLen, NULL);
+	y += m_tmInfo.tmHeight;
+
 	
 
 	SelectObject(hdc, hOldFont);
@@ -341,17 +352,20 @@ void CJuliasmApp::StartMandelbrotSSE(HWND hWnd)
 		return;
 	}
 
+	// record the proess start time
+	QueryPerformanceCounter(&m_tMandelbrotProcessStart);
+
 	// setup performance measurement
-	SecureZeroMemory(m_hThreadMandelbrotSSE, sizeof(m_hThreadMandelbrotSSE));
-	SecureZeroMemory(&m_tMandelbrotStart, sizeof(m_tMandelbrotStart));
-	SecureZeroMemory(&m_tMandelbrotStop, sizeof(m_tMandelbrotStop));
-	SecureZeroMemory(&m_tMandelbrotDuration, sizeof(m_tMandelbrotDuration));
-	QueryPerformanceCounter(&m_tMandelbrotStart);
+	m_tMandelbrotProcessStop.QuadPart = 0;
+	m_tMandelbrotProcessDurationTotal.QuadPart = 0;
+	m_tMandelbrotThreadDurationTotal.QuadPart = 0;
+	SecureZeroMemory(&m_tMandelbrotThreadDuration, sizeof(m_tMandelbrotThreadDuration));
 
 	// save the platform type
 	m_szMethod = "SSE";
 
 	// create threads to perform the calculation
+	SecureZeroMemory(m_hThreadMandelbrotSSE, sizeof(m_hThreadMandelbrotSSE));
 	m_iMandelbrotThreadCount = MAX_MAND_THREADS;
 	for (int i = 0; i < m_iMandelbrotThreadCount; ++i)
 	{
@@ -378,7 +392,18 @@ void CJuliasmApp::StartMandelbrotSSE2(HWND hWnd)
 	m_szMethod = "SSE2";
 
 	// setup the performance counters
-	QueryPerformanceCounter(&m_tMandelbrotStart);
+	// record the proess start time
+	QueryPerformanceCounter(&m_tMandelbrotProcessStart);
+
+	// setup performance measurement
+	m_tMandelbrotProcessStop.QuadPart = 0;
+	m_tMandelbrotProcessDurationTotal.QuadPart = 0;
+	m_tMandelbrotThreadDurationTotal.QuadPart = 0;
+	SecureZeroMemory(&m_tMandelbrotThreadDuration, sizeof(m_tMandelbrotThreadDuration));
+
+
+	// start the threads
+	SecureZeroMemory(m_hThreadMandelbrotSSE, sizeof(m_hThreadMandelbrotSSE));
 	m_iMandelbrotThreadCount = MAX_MAND_THREADS;
 	for (int i = 0; i < m_iMandelbrotThreadCount; ++i)
 	{
@@ -457,28 +482,41 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 		InterlockedDecrement(&m_iCalculatingMandelbrot);
 		if (m_iCalculatingMandelbrot == 0)
 		{
-			// kill the threads
+			m_tMandelbrotProcessDurationTotal.QuadPart = 0;
+
+			// kill the threads and update the total thread working duration
 			for (i = 0; i < m_iMandelbrotThreadCount; ++i)
 			{
 				CloseHandle(m_hThreadMandelbrotSSE[i]);
-				tMandelbrotDurationTotal.QuadPart += m_tMandelbrotDuration[i].QuadPart;
+				m_tMandelbrotThreadDurationTotal.QuadPart += m_tMandelbrotThreadDuration[i].QuadPart;
 			}
-			QueryPerformanceCounter(&m_tMandelbrotStop);
+			// update the total process duration
+			QueryPerformanceCounter(&m_tMandelbrotProcessStop);
+			m_tMandelbrotProcessDurationTotal.QuadPart = m_tMandelbrotProcessStop.QuadPart - m_tMandelbrotProcessStart.QuadPart;
 			InvalidateRect(hWnd, NULL, FALSE);
 		}
 		break;
 
 	case IDM_THREADCOMPLETEJULIA:
 		// note: the julia calculation does not kill the threads.  they are reused for subsequent calculations
-		InterlockedDecrement(&m_iCalculatingJulia);
-		for (i = 0, m_iTotalTicks.QuadPart = 0; i < MAX_JULIA_THREADS; ++i)
-			m_iTotalTicks.QuadPart += m_iTicks[i].QuadPart;
+		if (0 == InterlockedDecrementAcquire(&m_iCalculatingJulia))
+		{
+			// determine the total thread working duration
+			for (i = 0, m_tJuliaThreadDurationTotal.QuadPart = 0; i < MAX_JULIA_THREADS; ++i)
+			{
+				m_tJuliaThreadDurationTotal.QuadPart += m_tJuliaThreadDuration[i].QuadPart;
+			}
 
-		InvalidateRect(hWnd, NULL, FALSE);
+			// determine the total process working duration
+			QueryPerformanceCounter(&m_tJuliaProcessStop);
+			m_tJuliaProcessDurationTotal.QuadPart = m_tJuliaProcessStop.QuadPart - m_tJuliaProcessStart.QuadPart;
+
+			InvalidateRect(hWnd, NULL, FALSE);
+		}
 		break;
 
 	case IDM_ABOUT:
-//		DialogBox(, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+		DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_ABOUTBOX), get_hWnd(), About);
 		break;
 
 	case IDM_EXIT:
@@ -661,6 +699,10 @@ bool CJuliasmApp::handle_size(HWND hWnd, HDC hdc, int iSizeType, int iWidth, int
 //
 bool CJuliasmApp::RecalculateJulia(void)
 {
+	QueryPerformanceCounter(&m_tJuliaProcessStart);
+	m_tJuliaProcessDurationTotal.QuadPart = 0;
+	m_tJuliaProcessStop.QuadPart = 0;
+
 	// initiate the calculation on all threads
 	for (int i = 0; i < m_iJuliaThreadCount; ++i)
 	{

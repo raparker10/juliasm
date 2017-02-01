@@ -67,7 +67,8 @@
     <ClCompile Include="CApplication.cpp" />
     <ClCompile Include="CBitmap.cpp" />
     <ClCompile Include="CJuliasmApp.cpp" />
-    <ClCompile Include="CJuliasmApp_Calc.cpp" />
+    <ClCompile Include="CJuliasmApp_Mand.cpp" />
+    <ClCompile Include="CJuliasmApp_Julia.cpp" />
     <ClCompile Include="CPalette.cpp" />
     <ClCompile Include="cpu.cpp" />
     <ClCompile Include="juliasm.cpp" />

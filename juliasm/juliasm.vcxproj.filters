@@ -36,7 +36,10 @@
     <ClCompile Include="cpu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CJuliasmApp_Calc.cpp">
+    <ClCompile Include="CJuliasmApp_Mand.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CJuliasmApp_Julia.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
