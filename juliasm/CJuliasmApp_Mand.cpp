@@ -1,6 +1,95 @@
 #include "stdafx.h"
 
 //
+// Calculate a Mandelbrot set using compiled C++, assuming x87 compilation
+//
+// Uses:
+//	m_tMandelbrotStart, m_tMandelbrotStop, m_tMandelbrotTotal for timing
+//	m_iMandHeight, m_iMandWidth
+//	m_bmpMandelbrot
+//	get_MaxIterationsMand()
+//	m_paletteDefault
+//	get_CalcPlatformMand()
+DWORD WINAPI CJuliasmApp::CalculateMandX87(void* pArguments)
+{
+	// get Application and thread inde information
+	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
+	CJuliasmApp *pApp = pThreadInfo->pApp;
+	pApp->put_CalcPlatformMand(CalcPlatform::x87);
+	int iThreadIndex = pThreadInfo->iThreadIndex;
+
+
+	// initialzie the performance counter
+	LARGE_INTEGER tStart, tStop;
+	QueryPerformanceCounter(&tStart);
+
+
+	// determine how much of the image this thread will calculate
+	double fThreadHeight = (pApp->m_b2 - pApp->m_b1) / pApp->m_iMandelbrotThreadCount;
+
+	double
+		_a = pApp->m_a1,
+		_b = pApp->m_b1 + fThreadHeight * iThreadIndex,
+		da = (pApp->m_a2 - pApp->m_a1) / pApp->m_iMandWidth,
+		db = (pApp->m_b2 - pApp->m_b1) / pApp->m_iMandHeight;
+
+	pApp->m_da = da;
+	pApp->m_db = db;
+
+	// get the bitmap bits
+	unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpMandelbrot.get_bmpBits();
+
+	int pixelHeight = pApp->m_iMandHeight / pApp->m_iMandelbrotThreadCount;
+	int starty = iThreadIndex * pixelHeight;
+	int endy = starty + pixelHeight;
+
+	unsigned int iIndex = 0 + starty * pApp->m_iMandWidth;
+
+	// calculate each row...
+	for (int y = starty; y < endy; ++y)
+	{
+		// calculate each pixel...
+		_a = pApp->m_a1;
+		for (int x = 0; x < pApp->m_iMandWidth; x += 1)
+		{
+			// calculate each iteration...
+			double c = 0.0f;
+			double d = 0.0f;
+			double c2, d2, cd2;
+			double mag;
+			int i;
+			for (i = 0; i < pApp->get_MaxIterationsMand(); ++i)
+			{
+				cd2 = 2 * c * d;
+				c2 = c * c;
+				d2 = d * d;
+				mag = c2 + d2;
+				c = c2 - d2 + _a;
+				d = cd2 + _b;
+				if (mag > 4.0)
+					break;
+			}
+			_a += da;
+
+			// convert the iteration count into a color and store it in the bitmap bits
+			l_ppvBits[iIndex++] = (i == pApp->get_MaxIterationsMand()) ? 0 : pApp->m_PaletteDefault.get_Color(i);
+		}
+		_b += db;
+	}
+	// stop the performance counter
+	QueryPerformanceCounter(&tStop);
+//	m_tMandelbrotProcessDurationTotal.QuadPart 
+//		= m_tMandelbrotThreadDurationTotal.QuadPart 
+	pApp->m_tMandelbrotThreadDuration[iThreadIndex].QuadPart = tStop.QuadPart - tStart.QuadPart;
+
+	// tell the application that the thread is complete
+	PostMessage(pApp->get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETE, 0);
+
+	return 0;
+}
+
+
+//
 // Calculate a Mandelbrot set using single-threaded naive x87 compilation
 //
 // Uses:
@@ -10,7 +99,7 @@
 //	get_MaxIterationsMand()
 //	m_paletteDefault
 //	get_CalcPlatformMand()
-void CJuliasmApp::CalculateMandX87(void)
+void CJuliasmApp::CalculateMandX87SingleThread(void)
 {
 	// initialize variables
 	double _a = m_a1, 

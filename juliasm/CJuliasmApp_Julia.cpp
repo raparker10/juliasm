@@ -1,6 +1,99 @@
 #include "stdafx.h"
 
 //
+// Calculate a Julia set set using compiled C++, assuming x87 compilation
+//
+// Uses:
+//	m_iJuliaHeight, m_iJuliaWidth
+//	m_bmpJulia
+//	get_MaxIterationsJulia()
+//	m_paletteDefault
+//	get_CalcPlatformJulia()
+//
+// implements Z(n+1)=Z(n)^2+C where...
+//		Z is the current pixel location, represented by the variables 'c', and 'd'
+//		C is the constant that represents a specific Julia set and does not vary and is contained in 'a', and 'b'  (m_ja_sse, and m_jb_sse in CJuliasmApp)
+//
+DWORD WINAPI CJuliasmApp::CalculateJuliaX87(void* pArguments)
+{
+	// get Application and thread inde information
+	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
+	CJuliasmApp *pApp = pThreadInfo->pApp;
+	pApp->put_CalcPlatformJulia(CalcPlatform::x87);
+	int iThreadIndex = pThreadInfo->iThreadIndex;
+
+
+	// initialzie the performance counter
+	LARGE_INTEGER tStart, tStop;
+	QueryPerformanceCounter(&tStart);
+
+
+	// determine how much of the image this thread will calculate
+	double fThreadHeight = (pApp->m_jc2_sse - pApp->m_jc1_sse) / pApp->m_iJuliaThreadCount;
+
+	double
+		a = pApp->m_ja_sse,
+		b = pApp->m_jb_sse,
+		start_c = pApp->m_jc1_sse,
+		start_d = pApp->m_jd1_sse + fThreadHeight * iThreadIndex,
+		dc = (pApp->m_jc2_sse - pApp->m_jc1_sse) /pApp->m_iJuliaWidth,
+		dd = (pApp->m_jd2_sse - pApp->m_jd1_sse) /pApp->m_iJuliaHeight;
+
+	// get the bitmap bits
+	unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpJulia.get_bmpBits();
+
+	int pixelHeight = pApp->m_iJuliaHeight / pApp->m_iJuliaThreadCount;
+	int starty = iThreadIndex * pixelHeight;
+	int endy = starty + pixelHeight;
+
+	unsigned int iIndex = 0 + starty * pApp->m_iJuliaWidth;
+
+	// calculate each row...
+	double _d = start_d;
+	for (int y = starty; y < endy; ++y)
+	{
+		// calculate each pixel...
+		double _c = start_c;
+
+		for (int x = 0; x < pApp->m_iJuliaWidth; x += 1)
+		{
+			// calculate each iteration...
+			double c = _c;
+			double d = _d;
+			double c2, d2, cd2;
+			double mag;
+			int i;
+			for (i = 0; i < pApp->get_MaxIterationsJulia(); ++i)
+			{
+				cd2 = 2 * c * d;
+				c2 = c * c;
+				d2 = d * d;
+				mag = c2 + d2;
+				c = c2 - d2 + a;
+				d = cd2 + b;
+				if (mag > 4.0)
+					break;
+			}
+			_c += dc;
+
+			// convert the iteration count into a color and store it in the bitmap bits
+			l_ppvBits[iIndex++] = (i == pApp->get_MaxIterationsJulia()) ? 0 : pApp->m_PaletteDefault.get_Color(i);
+		}
+		_d += dd;
+	}
+	// stop the performance counter
+	QueryPerformanceCounter(&tStop);
+	pApp->m_tJuliaThreadDuration[iThreadIndex].QuadPart = tStop.QuadPart - tStart.QuadPart;
+
+	// tell the application that the thread is complete
+	PostMessage(pApp->get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETEJULIA87, 0);
+
+	return 0;
+}
+
+
+
+//
 // calculates the Julia set image using AVX
 //
 DWORD WINAPI CJuliasmApp::CalculateJuliaAVX(void* pArguments)
@@ -171,7 +264,7 @@ restart:
 			{
 				if (iterations_avx[j] >= pApp->get_MaxIterationsJulia())
 					iterations_avx[j] = 0;
-				((unsigned int*)l_ppvBitsJulia)[y * pApp->m_iJuliaWidth + x + j] = RGB(iterations_avx[j], iterations_avx[j] / 2, iterations_avx[j] / 3);
+				((unsigned int*)l_ppvBitsJulia)[y * pApp->m_iJuliaWidth + x + j] = (iterations_avx[j] == pApp->get_MaxIterationsJulia()) ? 0 : pApp->m_PaletteDefault.get_Color(iterations_avx[j]);
 			}
 
 			// generate the next set of 'c' values by adding the c_increment to the current c

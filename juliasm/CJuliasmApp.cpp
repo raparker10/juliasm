@@ -335,9 +335,48 @@ bool CJuliasmApp::handle_create(HWND hWnd, LPCREATESTRUCT *lpcs)
 //
 void CJuliasmApp::StartMandelbrotx87(HWND hWnd)
 {
+
+	// set the x87 as the current calculation platform
+	if (get_CalcPlatformMand() != CalcPlatform::x87)
+		put_CalcPlatformMand(CalcPlatform::x87);
+
+
+	// only recalculate if there is not an ongoing calculation
+	if (m_iCalculatingMandelbrot != 0)
+	{
+		MessageBeep(-1);
+		return;
+	}
+
+	// record the proess start time
+	QueryPerformanceCounter(&m_tMandelbrotProcessStart);
+
+	// setup performance measurement
+	m_tMandelbrotProcessStop.QuadPart = 0;
+	m_tMandelbrotProcessDurationTotal.QuadPart = 0;
+	m_tMandelbrotThreadDurationTotal.QuadPart = 0;
+	SecureZeroMemory(&m_tMandelbrotThreadDuration, sizeof(m_tMandelbrotThreadDuration));
+
+	// save the platform type
 	m_szMethod = "x87";
+
+	// create threads to perform the calculation
+	SecureZeroMemory(m_hThreadMandelbrotSSE, sizeof(m_hThreadMandelbrotSSE));
+	m_iMandelbrotThreadCount = MAX_MAND_THREADS;
+	for (int i = 0; i < m_iMandelbrotThreadCount; ++i)
+	{
+		InterlockedIncrement(&m_iCalculatingMandelbrot);
+		m_ThreadInfoMand[i].iThreadIndex = i;
+		m_ThreadInfoMand[i].pApp = this;
+		m_hThreadMandelbrotSSE[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateMandX87, (LPVOID)&m_ThreadInfoMand[i], 0, NULL);
+	}
+
+
+
+/*	m_szMethod = "x87";
 	CalculateMandX87();
 	InvalidateRect(hWnd, NULL, FALSE);
+	*/
 }
 
 //
@@ -474,13 +513,26 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 		CalculateMandelbrot();
 		break;
 
+	case IDM_CALCULATE_JULIA_X87:
+		put_CalcPlatformJulia(CalcPlatform::x87);
+		RecalculateJulia();
+		return 0;
+
+	case IDM_CALCULATE_JULIA_SSE:	// fall through
+	case IDM_CALCULATE_JULIA_SSE2:	// fall through
+	case IDM_CALCULATE_JULIA_AVX:	// fall through
+		put_CalcPlatformJulia(CalcPlatform::AVX);
+		RecalculateJulia();
+		return 0;
+
+
+
 	case IDM_RECALCULATE_JULIA:
 		RecalculateJulia();
 		return true;
 
 	case IDM_THREADCOMPLETE:
-		InterlockedDecrement(&m_iCalculatingMandelbrot);
-		if (m_iCalculatingMandelbrot == 0)
+		if (0 == InterlockedDecrementAcquire(&m_iCalculatingMandelbrot))
 		{
 			m_tMandelbrotProcessDurationTotal.QuadPart = 0;
 
@@ -496,6 +548,25 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 			InvalidateRect(hWnd, NULL, FALSE);
 		}
 		break;
+
+	case IDM_THREADCOMPLETEJULIA87:
+		if (0 == InterlockedDecrementAcquire(&m_iCalculatingJulia))
+		{
+			m_tJuliaProcessDurationTotal.QuadPart = 0;
+
+			// kill the threads and update the total thread working duration
+			for (i = 0; i < m_iJuliaThreadCount; ++i)
+			{
+				CloseHandle(m_hThreadJuliaX87[i]);
+				m_tJuliaThreadDurationTotal.QuadPart += m_tJuliaThreadDuration[i].QuadPart;
+			}
+			// update the total process duration
+			QueryPerformanceCounter(&m_tJuliaProcessStop);
+			m_tJuliaProcessDurationTotal.QuadPart = m_tJuliaProcessStop.QuadPart - m_tJuliaProcessStart.QuadPart;
+			InvalidateRect(hWnd, NULL, FALSE);
+		}
+		break;
+
 
 	case IDM_THREADCOMPLETEJULIA:
 		// note: the julia calculation does not kill the threads.  they are reused for subsequent calculations
@@ -699,26 +770,56 @@ bool CJuliasmApp::handle_size(HWND hWnd, HDC hdc, int iSizeType, int iWidth, int
 //
 bool CJuliasmApp::RecalculateJulia(void)
 {
+	// only recalculate if there is not an ongoing calculation
+	if (m_iCalculatingJulia != 0)
+	{
+		MessageBeep(-1);
+		return false;
+	}
+
 	QueryPerformanceCounter(&m_tJuliaProcessStart);
 	m_tJuliaProcessDurationTotal.QuadPart = 0;
 	m_tJuliaProcessStop.QuadPart = 0;
+	m_tJuliaThreadDurationTotal.QuadPart = 0;
+	SecureZeroMemory(&m_tJuliaThreadDuration, sizeof(m_tJuliaThreadDuration));
 
-	// initiate the calculation on all threads
-	for (int i = 0; i < m_iJuliaThreadCount; ++i)
+	if (m_CalcPlatformJulia == CalcPlatform::x87)
 	{
-		// indicate the julia calculation is starting
-		InterlockedIncrement(&m_iCalculatingJulia);
+		// save the platform type
+		m_szMethod = "x87";
 
-		// wait for a 'ready' state
-		while (m_iJuliaReady[i] == 0)
+		// create threads to perform the calculation
+		SecureZeroMemory(m_hThreadJuliaX87, sizeof(m_hThreadJuliaX87));
+		m_iJuliaThreadCount = MAX_JULIA_THREADS;
+		for (int i = 0; i < m_iJuliaThreadCount; ++i)
 		{
-			Sleep(100);
+			InterlockedIncrement(&m_iCalculatingJulia);
+			m_ThreadInfoJuliaX87[i].iThreadIndex = i;
+			m_ThreadInfoJuliaX87[i].pApp = this;
+			m_hThreadJuliaX87[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateJuliaX87, (LPVOID)&m_ThreadInfoJuliaX87[i], 0, &m_dwThreadJuliaIDX87[i]);
 		}
 
-		// start the calculation
-		if (0 == PostThreadMessage(m_dwThreadJuliaID[i], WM_COMMAND, 1, 0))
+	}
+	else
+	{
+
+		// initiate the calculation on all threads
+		for (int i = 0; i < m_iJuliaThreadCount; ++i)
 		{
-			MessageBox(get_hWnd(), "PostThreadMessage failed.", "Calculate Julia", MB_OK);
+			// indicate the julia calculation is starting
+			InterlockedIncrement(&m_iCalculatingJulia);
+
+			// wait for a 'ready' state
+			while (m_iJuliaReady[i] == 0)
+			{
+				Sleep(100);
+			}
+
+			// start the calculation
+			if (0 == PostThreadMessage(m_dwThreadJuliaID[i], WM_COMMAND, 1, 0))
+			{
+				MessageBox(get_hWnd(), "PostThreadMessage failed.", "Calculate Julia", MB_OK);
+			}
 		}
 	}
 	return true;

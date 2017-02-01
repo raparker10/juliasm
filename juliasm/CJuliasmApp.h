@@ -28,8 +28,11 @@ class CJuliasmApp : public CApplication {
 
 	TThreadInfo m_ThreadInfoMand[MAX_MAND_THREADS];
 	TThreadInfo m_ThreadInfoJulia[MAX_JULIA_THREADS];
+	TThreadInfo m_ThreadInfoJuliaX87[MAX_JULIA_THREADS];
+
 	HANDLE m_hThreadJulia[MAX_JULIA_THREADS];
 	DWORD  m_dwThreadJuliaID[MAX_JULIA_THREADS];
+	DWORD  m_dwThreadJuliaIDX87[MAX_JULIA_THREADS];
 	CalcPlatform m_CalcPlatformMand;
 	CalcPlatform m_CalcPlatformJulia;
 
@@ -57,8 +60,8 @@ class CJuliasmApp : public CApplication {
 	//
 	 LARGE_INTEGER m_tTotal;
 	 LARGE_INTEGER m_ticksPerSecond;
-	 LARGE_INTEGER m_iTicks[MAX_JULIA_THREADS];
-	 LARGE_INTEGER m_iTotalTicks;
+//	 LARGE_INTEGER m_iTicks[MAX_JULIA_THREADS];
+//	 LARGE_INTEGER m_iTotalTicks;
 
 	 // since there are (potentially) multiple threads, it is important to track both the 
 	 // clock time (the amount of time that has passed for the operator), and the 
@@ -124,6 +127,7 @@ class CJuliasmApp : public CApplication {
 
 	 char *m_szMethod;
 	 HANDLE m_hThreadMandelbrotSSE[MAX_MAND_THREADS];
+	 HANDLE m_hThreadJuliaX87[MAX_JULIA_THREADS];
 
 	 //
 	 // CPU feature identification
@@ -182,6 +186,7 @@ public:
 	void put_MaxIterationsJulia(int iMaxIterationsJulia);
 	inline int get_MaxIterationsJulia(void) const { return this->m_iMaxIterationsJulia; }
 
+	static DWORD WINAPI CJuliasmApp::CalculateJuliaX87(void* pArguments);
 	static DWORD WINAPI CJuliasmApp::CalculateJuliaAVX(void* pArguments);
 
 	void CalculateMandelbrot(void);
@@ -194,7 +199,8 @@ public:
 	static DWORD WINAPI CJuliasmApp::CalculateMandSSE(void* pArguments);
 	void CJuliasmApp::CalculateMandPointsSSE(void);
 
-	void CalculateMandX87(void); // Note: single-threaded
+	static DWORD WINAPI CalculateMandX87(void* pArguments);
+	void CalculateMandX87SingleThread(void); // Note: single-threaded
 
 	static DWORD WINAPI CalculateMandSSE2(void* pArguments);
 	void CalculateMandPointsSSE2(void);
