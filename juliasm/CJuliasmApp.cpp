@@ -361,22 +361,15 @@ void CJuliasmApp::StartMandelbrotx87(HWND hWnd)
 	m_szMethod = "x87";
 
 	// create threads to perform the calculation
-	SecureZeroMemory(m_hThreadMandelbrotSSE, sizeof(m_hThreadMandelbrotSSE));
+	SecureZeroMemory(m_hThreadMandelbrot, sizeof(m_hThreadMandelbrot));
 	m_iMandelbrotThreadCount = MAX_MAND_THREADS;
 	for (int i = 0; i < m_iMandelbrotThreadCount; ++i)
 	{
 		InterlockedIncrement(&m_iCalculatingMandelbrot);
 		m_ThreadInfoMand[i].iThreadIndex = i;
 		m_ThreadInfoMand[i].pApp = this;
-		m_hThreadMandelbrotSSE[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateMandX87, (LPVOID)&m_ThreadInfoMand[i], 0, NULL);
+		m_hThreadMandelbrot[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateMandX87, (LPVOID)&m_ThreadInfoMand[i], 0, NULL);
 	}
-
-
-
-/*	m_szMethod = "x87";
-	CalculateMandX87();
-	InvalidateRect(hWnd, NULL, FALSE);
-	*/
 }
 
 //
@@ -390,6 +383,11 @@ void CJuliasmApp::StartMandelbrotSSE(HWND hWnd)
 		MessageBeep(-1);
 		return;
 	}
+	if (get_CalcPlatformMand() != CalcPlatform::SSE)
+	{
+		put_CalcPlatformMand(CalcPlatform::SSE);
+	}
+
 
 	// record the proess start time
 	QueryPerformanceCounter(&m_tMandelbrotProcessStart);
@@ -404,14 +402,14 @@ void CJuliasmApp::StartMandelbrotSSE(HWND hWnd)
 	m_szMethod = "SSE";
 
 	// create threads to perform the calculation
-	SecureZeroMemory(m_hThreadMandelbrotSSE, sizeof(m_hThreadMandelbrotSSE));
+	SecureZeroMemory(m_hThreadMandelbrot, sizeof(m_hThreadMandelbrot));
 	m_iMandelbrotThreadCount = MAX_MAND_THREADS;
 	for (int i = 0; i < m_iMandelbrotThreadCount; ++i)
 	{
 		InterlockedIncrement(&m_iCalculatingMandelbrot);
 		m_ThreadInfoMand[i].iThreadIndex = i;
 		m_ThreadInfoMand[i].pApp = this;
-		m_hThreadMandelbrotSSE[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateMandSSE, (LPVOID)&m_ThreadInfoMand[i], 0, NULL);
+		m_hThreadMandelbrot[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateMandSSE, (LPVOID)&m_ThreadInfoMand[i], 0, NULL);
 	}
 }
 
@@ -426,6 +424,11 @@ void CJuliasmApp::StartMandelbrotSSE2(HWND hWnd)
 		MessageBeep(-1);
 		return;
 	}
+	if (get_CalcPlatformMand() != CalcPlatform::SSE2)
+	{
+		put_CalcPlatformMand(CalcPlatform::SSE2);
+	}
+
 
 	// save the calculation platform
 	m_szMethod = "SSE2";
@@ -442,34 +445,101 @@ void CJuliasmApp::StartMandelbrotSSE2(HWND hWnd)
 
 
 	// start the threads
-	SecureZeroMemory(m_hThreadMandelbrotSSE, sizeof(m_hThreadMandelbrotSSE));
+	SecureZeroMemory(m_hThreadMandelbrot, sizeof(m_hThreadMandelbrot));
 	m_iMandelbrotThreadCount = MAX_MAND_THREADS;
 	for (int i = 0; i < m_iMandelbrotThreadCount; ++i)
 	{
 		InterlockedIncrement(&m_iCalculatingMandelbrot);
 		m_ThreadInfoMand[i].iThreadIndex = i;
 		m_ThreadInfoMand[i].pApp = this;
-		m_hThreadMandelbrotSSE[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateMandSSE2, (LPVOID)&m_ThreadInfoMand[i], 0, NULL);
+		m_hThreadMandelbrot[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateMandSSE2, (LPVOID)&m_ThreadInfoMand[i], 0, NULL);
 	}
 }
 
-
 //
-// Initiate a mandelbrot recalculate using AVX math capabilities
-// This function is a placeholder for future functionality.
+// Initiate a mandelbrot recalculate using SSE2 math capabilities
 //
 void CJuliasmApp::StartMandelbrotAVX32(HWND hWnd)
 {
-	MessageBox(hWnd, "Function not implemented.", "Error", MB_ICONINFORMATION | MB_OK);
+	// only recalculate if there is not an ongoing calculation
+	if (m_iCalculatingMandelbrot != 0)
+	{
+		MessageBeep(-1);
+		return;
+	}
+	
+	if (get_CalcPlatformMand() != CalcPlatform::AVX32)
+	{
+		put_CalcPlatformMand(CalcPlatform::AVX32);
+	}
+
+
+	// save the calculation platform
+	m_szMethod = "AVX 32-bit";
+
+	// setup the performance counters
+	// record the proess start time
+	QueryPerformanceCounter(&m_tMandelbrotProcessStart);
+
+	// setup performance measurement
+	m_tMandelbrotProcessStop.QuadPart = 0;
+	m_tMandelbrotProcessDurationTotal.QuadPart = 0;
+	m_tMandelbrotThreadDurationTotal.QuadPart = 0;
+	SecureZeroMemory(&m_tMandelbrotThreadDuration, sizeof(m_tMandelbrotThreadDuration));
+
+
+	// start the threads
+	SecureZeroMemory(m_hThreadMandelbrot, sizeof(m_hThreadMandelbrot));
+	m_iMandelbrotThreadCount = MAX_MAND_THREADS;
+	for (int i = 0; i < m_iMandelbrotThreadCount; ++i)
+	{
+		InterlockedIncrement(&m_iCalculatingMandelbrot);
+		m_ThreadInfoMand[i].iThreadIndex = i;
+		m_ThreadInfoMand[i].pApp = this;
+		m_hThreadMandelbrot[i] = CreateThread(NULL, THREAD_STACK_SIZE * 2, CalculateMandAVX32, (LPVOID)&m_ThreadInfoMand[i], 0, NULL);
+	}
 }
 
 //
-// Initiate a mandelbrot recalculate using AVX math capabilities
-// This function is a placeholder for future functionality.
+// Initiate a mandelbrot recalculate using SSE2 math capabilities
 //
 void CJuliasmApp::StartMandelbrotAVX64(HWND hWnd)
 {
-	MessageBox(hWnd, "Function not implemented.", "Error", MB_ICONINFORMATION | MB_OK);
+	// only recalculate if there is not an ongoing calculation
+	if (m_iCalculatingMandelbrot != 0)
+	{
+		MessageBeep(-1);
+		return;
+	}
+	if (get_CalcPlatformMand() != CalcPlatform::AVX64)
+	{
+		put_CalcPlatformMand(CalcPlatform::AVX64);
+	}
+
+	// save the calculation platform
+	m_szMethod = "AVX 32-bit";
+
+	// setup the performance counters
+	// record the proess start time
+	QueryPerformanceCounter(&m_tMandelbrotProcessStart);
+
+	// setup performance measurement
+	m_tMandelbrotProcessStop.QuadPart = 0;
+	m_tMandelbrotProcessDurationTotal.QuadPart = 0;
+	m_tMandelbrotThreadDurationTotal.QuadPart = 0;
+	SecureZeroMemory(&m_tMandelbrotThreadDuration, sizeof(m_tMandelbrotThreadDuration));
+
+
+	// start the threads
+	SecureZeroMemory(m_hThreadMandelbrot, sizeof(m_hThreadMandelbrot));
+	m_iMandelbrotThreadCount = MAX_MAND_THREADS;
+	for (int i = 0; i < m_iMandelbrotThreadCount; ++i)
+	{
+		InterlockedIncrement(&m_iCalculatingMandelbrot);
+		m_ThreadInfoMand[i].iThreadIndex = i;
+		m_ThreadInfoMand[i].pApp = this;
+		m_hThreadMandelbrot[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateMandAVX64, (LPVOID)&m_ThreadInfoMand[i], 0, NULL);
+	}
 }
 
 //
@@ -503,6 +573,14 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 		StartMandelbrotSSE2(hWnd);
 		break;
 
+	case IDM_CALCULATE_MAND_AVX32:
+		StartMandelbrotAVX32(hWnd);
+		break;
+
+	case IDM_CALCULATE_MAND_AVX64:
+		StartMandelbrotAVX64(hWnd);
+		break;
+
 	case IDM_CLEAR_MAND:
 		m_bmpJulia.Erase(RGB(255, 255, 255));
 		m_bmpMandelbrot.Erase(RGB(255, 255, 255));
@@ -527,7 +605,15 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 		return 0;
 
 	case IDM_CALCULATE_JULIA_SSE:	// fall through until SSE Julia is implemented
+		put_CalcPlatformJulia(CalcPlatform::SSE);
+		RecalculateJulia();
+		return 0;
+
 	case IDM_CALCULATE_JULIA_SSE2:	// fall through until SSE2 Julia implemented
+		put_CalcPlatformJulia(CalcPlatform::SSE2);
+		RecalculateJulia();
+		return 0;
+
 	case IDM_CALCULATE_JULIA_AVX32:
 		put_CalcPlatformJulia(CalcPlatform::AVX32);
 		RecalculateJulia();
@@ -551,7 +637,7 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 			// kill the threads and update the total thread working duration
 			for (i = 0; i < m_iMandelbrotThreadCount; ++i)
 			{
-				CloseHandle(m_hThreadMandelbrotSSE[i]);
+				CloseHandle(m_hThreadMandelbrot[i]);
 				m_tMandelbrotThreadDurationTotal.QuadPart += m_tMandelbrotThreadDuration[i].QuadPart;
 			}
 			// update the total process duration
@@ -569,7 +655,7 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 			// kill the threads and update the total thread working duration
 			for (i = 0; i < m_iJuliaThreadCount; ++i)
 			{
-				CloseHandle(m_hThreadJuliaX87[i]);
+				CloseHandle(m_hThreadJulia[i]);
 				m_tJuliaThreadDurationTotal.QuadPart += m_tJuliaThreadDuration[i].QuadPart;
 			}
 			// update the total process duration
@@ -587,7 +673,7 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 			// kill the threads and update the total thread working duration
 			for (i = 0; i < m_iJuliaThreadCount; ++i)
 			{
-				CloseHandle(m_hThreadJuliaAVX64[i]);
+				CloseHandle(m_hThreadJulia[i]);
 				m_tJuliaThreadDurationTotal.QuadPart += m_tJuliaThreadDuration[i].QuadPart;
 			}
 			// update the total process duration
@@ -606,7 +692,7 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 			// kill the threads and update the total thread working duration
 			for (i = 0; i < m_iJuliaThreadCount; ++i)
 			{
-				CloseHandle(m_hThreadJuliaAVX32[i]);
+				CloseHandle(m_hThreadJulia[i]);
 				m_tJuliaThreadDurationTotal.QuadPart += m_tJuliaThreadDuration[i].QuadPart;
 			}
 			// update the total process duration
@@ -616,6 +702,41 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 		}
 		break;
 
+	case IDM_THREADCOMPLETEJULIASSE:
+		if (0 == InterlockedDecrementAcquire(&m_iCalculatingJulia))
+		{
+			m_tJuliaProcessDurationTotal.QuadPart = 0;
+
+			// kill the threads and update the total thread working duration
+			for (i = 0; i < m_iJuliaThreadCount; ++i)
+			{
+				CloseHandle(m_hThreadJulia[i]);
+				m_tJuliaThreadDurationTotal.QuadPart += m_tJuliaThreadDuration[i].QuadPart;
+			}
+			// update the total process duration
+			QueryPerformanceCounter(&m_tJuliaProcessStop);
+			m_tJuliaProcessDurationTotal.QuadPart = m_tJuliaProcessStop.QuadPart - m_tJuliaProcessStart.QuadPart;
+			InvalidateRect(hWnd, NULL, FALSE);
+		}
+		break;
+
+	case IDM_THREADCOMPLETEJULIASSE2:
+		if (0 == InterlockedDecrementAcquire(&m_iCalculatingJulia))
+		{
+			m_tJuliaProcessDurationTotal.QuadPart = 0;
+
+			// kill the threads and update the total thread working duration
+			for (i = 0; i < m_iJuliaThreadCount; ++i)
+			{
+				CloseHandle(m_hThreadJulia[i]);
+				m_tJuliaThreadDurationTotal.QuadPart += m_tJuliaThreadDuration[i].QuadPart;
+			}
+			// update the total process duration
+			QueryPerformanceCounter(&m_tJuliaProcessStop);
+			m_tJuliaProcessDurationTotal.QuadPart = m_tJuliaProcessStop.QuadPart - m_tJuliaProcessStart.QuadPart;
+			InvalidateRect(hWnd, NULL, FALSE);
+		}
+		break;
 /*
 		// note: the julia calculation does not kill the threads.  they are reused for subsequent calculations
 		if (0 == InterlockedDecrementAcquire(&m_iCalculatingJulia))
@@ -795,8 +916,8 @@ bool CJuliasmApp::handle_size(HWND hWnd, HDC hdc, int iSizeType, int iWidth, int
 	// only respond to messages if the right type of resize messages are sent
 	if (iSizeType == SIZE_MAXIMIZED || iSizeType == SIZE_MAXSHOW || iSizeType == SIZE_RESTORED)
 	{
-		// make sure the image with is a multiple of 4 (RAP this should probably be converted to 8 for AVX32)
-		m_iMandHeight = m_iMandWidth = (iWidth / 4) - (iWidth / 4 % 4);
+		// make sure the image with is a multiple of POINTS_CONCURRENT_MAX 
+		m_iMandHeight = m_iMandWidth = (iWidth / MANDELBROT_SCREEN_FRACTION) - (iWidth / MANDELBROT_SCREEN_FRACTION % POINTS_CONCURRENT_MAX);
 		m_iJuliaHeight = iHeight;
 		m_iJuliaWidth = iWidth - m_iMandWidth;
 
@@ -837,14 +958,48 @@ bool CJuliasmApp::RecalculateJulia(void)
 		m_szMethod = "x87";
 
 		// create threads to perform the calculation
-		SecureZeroMemory(m_hThreadJuliaX87, sizeof(m_hThreadJuliaX87));
+		SecureZeroMemory(m_hThreadJulia, sizeof(m_hThreadJulia));
 		m_iJuliaThreadCount = MAX_JULIA_THREADS;
 		for (int i = 0; i < m_iJuliaThreadCount; ++i)
 		{
 			InterlockedIncrement(&m_iCalculatingJulia);
 			m_ThreadInfoJuliaX87[i].iThreadIndex = i;
 			m_ThreadInfoJuliaX87[i].pApp = this;
-			m_hThreadJuliaX87[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateJuliaX87, (LPVOID)&m_ThreadInfoJuliaX87[i], 0, &m_dwThreadJuliaIDX87[i]);
+			m_hThreadJulia[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateJuliaX87, (LPVOID)&m_ThreadInfoJuliaX87[i], 0, &m_dwThreadJuliaIDX87[i]);
+		}
+
+	}
+	else if (m_CalcPlatformJulia == CalcPlatform::SSE)
+	{
+		// save the platform type
+		m_szMethod = "SSE";
+
+		// create threads to perform the calculation
+		SecureZeroMemory(m_hThreadJulia, sizeof(m_hThreadJulia));
+		m_iJuliaThreadCount = MAX_JULIA_THREADS;
+		for (int i = 0; i < m_iJuliaThreadCount; ++i)
+		{
+			InterlockedIncrement(&m_iCalculatingJulia);
+			m_ThreadInfoJulia[i].iThreadIndex = i;
+			m_ThreadInfoJulia[i].pApp = this;
+			m_hThreadJulia[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateJuliaSSE, (LPVOID)&m_ThreadInfoJulia[i], 0, &m_dwThreadJuliaID[i]);
+		}
+
+	}
+	else if (m_CalcPlatformJulia == CalcPlatform::SSE2)
+	{
+		// save the platform type
+		m_szMethod = "SSE2";
+
+		// create threads to perform the calculation
+		SecureZeroMemory(m_hThreadJulia, sizeof(m_hThreadJulia));
+		m_iJuliaThreadCount = MAX_JULIA_THREADS;
+		for (int i = 0; i < m_iJuliaThreadCount; ++i)
+		{
+			InterlockedIncrement(&m_iCalculatingJulia);
+			m_ThreadInfoJulia[i].iThreadIndex = i;
+			m_ThreadInfoJulia[i].pApp = this;
+			m_hThreadJulia[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateJuliaSSE2, (LPVOID)&m_ThreadInfoJulia[i], 0, &m_dwThreadJuliaID[i]);
 		}
 
 	}
@@ -854,14 +1009,14 @@ bool CJuliasmApp::RecalculateJulia(void)
 		m_szMethod = "AVX 64-bit";
 
 		// create threads to perform the calculation
-		SecureZeroMemory(m_hThreadJuliaAVX64, sizeof(m_hThreadJuliaAVX64));
+		SecureZeroMemory(m_hThreadJulia, sizeof(m_hThreadJulia));
 		m_iJuliaThreadCount = MAX_JULIA_THREADS;
 		for (int i = 0; i < m_iJuliaThreadCount; ++i)
 		{
 			InterlockedIncrement(&m_iCalculatingJulia);
 			m_ThreadInfoJuliaAVX64[i].iThreadIndex = i;
 			m_ThreadInfoJuliaAVX64[i].pApp = this;
-			m_hThreadJuliaAVX64[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateJuliaAVX64, (LPVOID)&m_ThreadInfoJuliaAVX64[i], 0, &m_dwThreadJuliaIDAVX64[i]);
+			m_hThreadJulia[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateJuliaAVX64, (LPVOID)&m_ThreadInfoJuliaAVX64[i], 0, &m_dwThreadJuliaIDAVX64[i]);
 		}
 
 	}
@@ -871,36 +1026,16 @@ bool CJuliasmApp::RecalculateJulia(void)
 		m_szMethod = "AVX 32-bit";
 
 		// create threads to perform the calculation
-		SecureZeroMemory(m_hThreadJuliaAVX32, sizeof(m_hThreadJuliaAVX32));
+		SecureZeroMemory(m_hThreadJulia, sizeof(m_hThreadJulia));
 		m_iJuliaThreadCount = MAX_JULIA_THREADS;
 		for (int i = 0; i < m_iJuliaThreadCount; ++i)
 		{
 			InterlockedIncrement(&m_iCalculatingJulia);
 			m_ThreadInfoJuliaAVX32[i].iThreadIndex = i;
 			m_ThreadInfoJuliaAVX32[i].pApp = this;
-			m_hThreadJuliaAVX32[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateJuliaAVX32, (LPVOID)&m_ThreadInfoJuliaAVX32[i], 0, &m_dwThreadJuliaIDAVX32[i]);
+			m_hThreadJulia[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateJuliaAVX32, (LPVOID)&m_ThreadInfoJuliaAVX32[i], 0, &m_dwThreadJuliaIDAVX32[i]);
 		}
 
-/*
-		// initiate the calculation on all threads
-		for (int i = 0; i < m_iJuliaThreadCount; ++i)
-		{
-			// indicate the julia calculation is starting
-			InterlockedIncrement(&m_iCalculatingJulia);
-
-			// wait for a 'ready' state
-			while (m_iJuliaReady[i] == 0)
-			{
-				Sleep(100);
-			}
-
-			// start the calculation
-			if (0 == PostThreadMessage(m_dwThreadJuliaID[i], WM_COMMAND, 1, 0))
-			{
-				MessageBox(get_hWnd(), "PostThreadMessage failed.", "Calculate Julia", MB_OK);
-			}
-		}
-		*/
 	}
 	return true;
 }
@@ -1003,7 +1138,7 @@ void CJuliasmApp::CalculateMandelbrot(void)
 		StartMandelbrotAVX64(get_hWnd());
 		break;
 
-	case AVX2:
+	case FMA:
 		StartMandelbrotAVX2(get_hWnd());
 		break;
 	}
@@ -1025,12 +1160,12 @@ void CJuliasmApp::UpdateCalcPlatformMenuMand(void)
 	case SSE2:	iMenuItem = IDM_CALCULATE_MAND_SSE2; break;
 	case AVX32:	iMenuItem = IDM_CALCULATE_MAND_AVX32; break;
 	case AVX64:	iMenuItem = IDM_CALCULATE_MAND_AVX64; break;
-	case AVX2:	iMenuItem = IDM_CALCULATE_MAND_AVX2; break;
+	case FMA:	iMenuItem = IDM_CALCULATE_MAND_FMA; break;
 	default:	iMenuItem = 0; break;
 	}
 
 	// uncheck all of the platform menu items
-	CheckMenuRadioItem(GetMenu(get_hWnd()), IDM_CALCULATE_MAND_X87, IDM_CALCULATE_MAND_AVX2, iMenuItem, MF_BYCOMMAND);
+	CheckMenuRadioItem(GetMenu(get_hWnd()), IDM_CALCULATE_MAND_X87, IDM_CALCULATE_MAND_FMA, iMenuItem, MF_BYCOMMAND);
 
 }
 //
@@ -1047,7 +1182,7 @@ void CJuliasmApp::UpdateCalcPlatformMenuJulia(void)
 	case SSE2:	iMenuItem = IDM_CALCULATE_JULIA_SSE2; break;
 	case AVX32:	iMenuItem = IDM_CALCULATE_JULIA_AVX32; break;
 	case AVX64:	iMenuItem = IDM_CALCULATE_JULIA_AVX64; break;
-	case AVX2:	iMenuItem = IDM_CALCULATE_JULIA_AVX2; break;
+	case FMA:	iMenuItem = IDM_CALCULATE_JULIA_FMA; break;
 	default:	iMenuItem = 0; break;
 	}
 
@@ -1056,7 +1191,7 @@ void CJuliasmApp::UpdateCalcPlatformMenuJulia(void)
 	HMENU hMenu = GetMenu(get_hWnd());
 	if (hMenu != NULL)
 	{
-		if (0 == CheckMenuRadioItem(hMenu, IDM_CALCULATE_JULIA_X87, IDM_CALCULATE_JULIA_AVX2, iMenuItem, MF_BYCOMMAND))
+		if (0 == CheckMenuRadioItem(hMenu, IDM_CALCULATE_JULIA_X87, IDM_CALCULATE_JULIA_FMA, iMenuItem, MF_BYCOMMAND))
 		{
 			iError = GetLastError();		
 		}
@@ -1125,7 +1260,7 @@ char *CJuliasmApp::get_CalcPlatformName(char *szBuf, size_t iLen, CalcPlatform c
 	case SSE2: ptr = "SSE2"; break;
 	case AVX32: ptr = "AVX 32-bit"; break;
 	case AVX64: ptr = "AVX 64-bit"; break;
-	case AVX2: ptr = "AVX2"; break;
+	case FMA: ptr = "AVX2"; break;
 	default: ptr = "Undefined"; break;
 	}
 	strcpy_s(szBuf, iLen, ptr);

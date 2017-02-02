@@ -14,7 +14,7 @@ various compute platforms.
 * SSE2
 * AVX 32-bit
 * AVX 64-bit
-* AVX2
+* FMA
 * OpenCl
 
 While Assembly and multi-threading are the focus, as much of this program as conveniently 
@@ -26,11 +26,11 @@ This program is a work in progress, and as such not all combinations of calculat
 are complete.  Here is the current status.
 
                                  Technology
-Calculation | x87    | SSE    |  SSE2  |  AVX-32|  AVC-64 | AVX2   | OpenCL |
+Calculation | x87    | SSE    |  SSE2  |  AVX-32|  AVX-64 | FMA    | OpenCL |
 -----------------------------------------------------------------------------
-Mandelbrot  | Yes    | Yes    | Yes    |  No    |  No     | No     |  No    |
+Mandelbrot  | Yes    | Yes    | Yes    |  Yes   |  Yes    | No     |  No    |
 -----------------------------------------------------------------------------
-Julia       | Yes    | No     | No     |  Yes   |  Yes    | No     |  No    |
+Julia       | Yes    | Yes    | Yes    |  Yes   |  Yes    | No     |  No    |
 -----------------------------------------------------------------------------
 
 Source Files

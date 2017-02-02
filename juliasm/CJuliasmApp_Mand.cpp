@@ -33,9 +33,6 @@ DWORD WINAPI CJuliasmApp::CalculateMandX87(void* pArguments)
 		da = (pApp->m_a2 - pApp->m_a1) / pApp->m_iMandWidth,
 		db = (pApp->m_b2 - pApp->m_b1) / pApp->m_iMandHeight;
 
-	pApp->m_da = da;
-	pApp->m_db = db;
-
 	// get the bitmap bits
 	unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpMandelbrot.get_bmpBits();
 
@@ -78,8 +75,8 @@ DWORD WINAPI CJuliasmApp::CalculateMandX87(void* pArguments)
 	}
 	// stop the performance counter
 	QueryPerformanceCounter(&tStop);
-//	m_tMandelbrotProcessDurationTotal.QuadPart 
-//		= m_tMandelbrotThreadDurationTotal.QuadPart 
+	//	m_tMandelbrotProcessDurationTotal.QuadPart 
+	//		= m_tMandelbrotThreadDurationTotal.QuadPart 
 	pApp->m_tMandelbrotThreadDuration[iThreadIndex].QuadPart = tStop.QuadPart - tStart.QuadPart;
 
 	// tell the application that the thread is complete
@@ -99,12 +96,12 @@ DWORD WINAPI CJuliasmApp::CalculateMandX87(void* pArguments)
 //	get_MaxIterationsMand()
 //	m_paletteDefault
 //	get_CalcPlatformMand()
-void CJuliasmApp::CalculateMandX87SingleThread(void)
+/*void CJuliasmApp::CalculateMandX87SingleThread(void)
 {
 	// initialize variables
-	double _a = m_a1, 
-		_b = m_b1, 
-		da = (m_a2 - m_a1) / m_iMandWidth, 
+	double _a = m_a1,
+		_b = m_b1,
+		da = (m_a2 - m_a1) / m_iMandWidth,
 		db = (m_b2 - m_b1) / m_iMandHeight;
 
 	unsigned int iIndex = 0;
@@ -121,9 +118,6 @@ void CJuliasmApp::CalculateMandX87SingleThread(void)
 
 	//get the bitmap bits
 	unsigned int* l_ppvBits = (unsigned int*)m_bmpMandelbrot.get_bmpBits();
-
-	m_da = da;
-	m_db = db;
 
 	// calculate each row...
 	_b = m_b1;
@@ -159,183 +153,129 @@ void CJuliasmApp::CalculateMandX87SingleThread(void)
 	}
 	// stop the performance counter
 	QueryPerformanceCounter(&tStop);
-	m_tMandelbrotProcessDurationTotal.QuadPart 
-		= m_tMandelbrotThreadDurationTotal.QuadPart 
+	m_tMandelbrotProcessDurationTotal.QuadPart
+		= m_tMandelbrotThreadDurationTotal.QuadPart
 		= m_tMandelbrotThreadDuration[iThreadIndex].QuadPart = tStop.QuadPart - tStart.QuadPart;
 }
-// inputs
-// a's in xmm3
-// b's in xmm4
-// maximums (e.g. 4) in xmm7
-//
-// outputs
-// returns the iteration counts in XMM6
-//
-
-#define SSE_MAX xmm7
-#define SSE_A xmm3
-#define SSE_B xmm4
-#define SSE_C xmm0 
-#define SSE_C_SQU xmm0
-#define SSE_D xmm1 
-#define SSE_D_SQU xmm1
-#define SSE_CD xmm2
-#define SSE_2CD SSE_CD
-#define SSE_ITERATIONS xmm6
-#define SSE_RESULT xmm5
-#define SSE_COUNT_MASK SSE_RESULT
-void CJuliasmApp::CalculateMandPointsSSE(void)
-{
-	int tmp = get_MaxIterationsMand();
-	__asm {
-		// place the maximum number of iterations in AX
-		mov ax, WORD PTR tmp
-
-		// place 0 in c, d, and iterations
-		xorps SSE_C, SSE_C						// xmm0
-		xorps SSE_D, SSE_D						// xmm1
-		xorps SSE_ITERATIONS, SSE_ITERATIONS	//xmm6
-
-		iterate :
-			// calculate c * d and place in xmm2
-			movaps SSE_CD, SSE_C	// c  n(xmm2, xmm0)
-			mulps SSE_CD, SSE_D		// * d (xmm2, xmm1)
-			addps SSE_2CD, SSE_CD	// * 2 (by adding c * d to itself (xmm2, xmm2)
-
-			// save the orbit point
-			//		test bl,bl
-			//		jnz save_orbit
-			save_orbit_resume :
-			mulps SSE_C, SSE_C		// calulate c^2 (xmm0, xmm0)
-			mulps SSE_D, SSE_D	// calculate d^2    (xmm1, xmm1)
-
-			// calculate the magnitude of the n^2 new values and store them in XMM5
-			movaps SSE_RESULT, SSE_C_SQU	// add c^2 to the result (xmm5, xmm0)
-			addps SSE_RESULT, SSE_D_SQU		// add d^2 to the result xmm5, xmm1)
-			subps SSE_C_SQU, SSE_D_SQU		// calculate c^2-d^2 (xmm0, xmm1)
-
-			movaps SSE_D, SSE_2CD // get the new d; d(n+1) = 2 * c(n) * d(n); (xmm1, xmm2) 
-			addps SSE_C_SQU, SSE_A	// add 'a' to c^2; (xmm1, xmm3)
-			addps SSE_D_SQU, SSE_B	// add 'b' to d^2; (xmm2, xmm4)
-
-			// compare the previous iteration to the maximum value
-			cmpltps SSE_RESULT, SSE_MAX		// campare to max range
-			pmovmskb ecx, SSE_RESULT
-			andps SSE_RESULT, SSE_MAX		// use result as bitmask for counter to generate increment
-			addps SSE_ITERATIONS, SSE_COUNT_MASK		// add increment to counter
-
-			test ecx, ecx
-			jz done
-
-			dec ax
-			jnz iterate
-			jmp done
-
-		jmp save_orbit_resume
-
-		done :
-		// adjust the counts by 4
-		divps xmm6, xmm7
-	}
-}
+*/
 //
 // Calculates a mandelbrot set using SSE instructions.
 // 
-// This functions handles the iteration over pixels,
-//	while the calculation is actually performed bu the
-//	CalculateMandPointsSSE function.
-//
-// Uses:
-//	put_CalcPlatformMand();
-//	m_iMandelbrotThreadCount;
 
-//unsigned __stdcall CalculateMandSSE( void* pArguments )
 DWORD WINAPI CJuliasmApp::CalculateMandSSE(void* pArguments)
 {
 	// get Application and thread inde information
 	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
 	CJuliasmApp *pApp = pThreadInfo->pApp;
-	pApp->put_CalcPlatformMand(CalcPlatform::SSE);
 	int iThreadIndex = pThreadInfo->iThreadIndex;
+	__declspec(align(16))int max_i = pApp->get_MaxIterationsMand();
 
 	// initialzie the performance counter
 	LARGE_INTEGER tStart, tStop;
 	QueryPerformanceCounter(&tStart);
 
-
 	// determine how much of the image this thread will calculate
-	double fThreadHeight = (pApp->m_b2 - pApp->m_b1) / pApp->m_iMandelbrotThreadCount;
+	float fThreadHeight = (float)(pApp->m_b2 - pApp->m_b1) / pApp->m_iMandelbrotThreadCount;
 
 	// declare calculation variables used by SSE
-	__declspec(align(16)) float b_sse[POINTS_CONCURRENT_SSE];
-	__declspec(align(16)) float maximum_sse[POINTS_CONCURRENT_SSE];
 	__declspec(align(16)) float iterations_sse[POINTS_CONCURRENT_SSE];
-	__declspec(align(16)) float da_sse[POINTS_CONCURRENT_SSE];
-	__declspec(align(16)) float db_sse[POINTS_CONCURRENT_SSE];
-	__declspec(align(16)) float a1_sse[POINTS_CONCURRENT_SSE];
 
-	double
-		_a = pApp->m_a1,
-		_b = pApp->m_b1 + fThreadHeight * iThreadIndex,
-		da = (pApp->m_a2 - pApp->m_a1) / pApp->m_iMandWidth,
-		db = (pApp->m_b2 - pApp->m_b1) / pApp->m_iMandHeight;
+	__declspec(align(16))float
+		af = (float)pApp->m_a1,
+		bf = (float)pApp->m_b1 + fThreadHeight * iThreadIndex,
+		daf = (float)(pApp->m_a2 - pApp->m_a1) / pApp->m_iMandWidth,
+		dbf = (float)(pApp->m_b2 - pApp->m_b1) / pApp->m_iMandHeight;
 
-	pApp->m_da = da;
-	pApp->m_db = db;
-
-	// initialize SSE variables
-	for (int i = 0; i < POINTS_CONCURRENT_SSE; ++i)
-	{
-		maximum_sse[i] = MAXIMUM_MAND_SSE;
-		b_sse[i] = (float)_b;
-		db_sse[i] = (float)db;
-		// load an array of the first a's
-		a1_sse[i] = (float)_a;
-		_a += da;
-		da_sse[i] = (float)da * POINTS_CONCURRENT_SSE;
-	}
-
-	// load the imaginary component
-	__asm movaps xmm4, oword ptr[b_sse]
-
-	// load the maximum vector size
-	__asm movaps xmm7, oword ptr[maximum_sse]
 
 	// get the bitmap bits
-	unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpMandelbrot.get_bmpBits();
+	__declspec(align(16)) unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpMandelbrot.get_bmpBits();
 
 	int pixelHeight = pApp->m_iMandHeight / pApp->m_iMandelbrotThreadCount;
 	int starty = iThreadIndex * pixelHeight;
 	int endy = starty + pixelHeight;
-
 	unsigned int iIndex = 0 + starty * pApp->m_iMandWidth;
+
+	// initialize SSE variables for loading into SSE data types
+	float da_total = daf * POINTS_CONCURRENT_SSE;
+	const __declspec(align(16)) float a1_sse[POINTS_CONCURRENT_SSE] = {af + daf * 0, af + daf * 1, af + daf * 2, af + daf * 3,};
+	const __declspec(align(16)) float da_sse[POINTS_CONCURRENT_SSE] = {da_total, da_total, da_total, da_total,};
+	const __declspec(align(16)) float db_sse[POINTS_CONCURRENT_SSE] = {dbf, dbf, dbf, dbf,};
+	const __declspec(align(16)) float b_sse[POINTS_CONCURRENT_SSE] = {bf, bf, bf, bf,};
+	const __declspec(align(16)) float max_sse[POINTS_CONCURRENT_SSE] = {MAXIMUM_MAND_MAGNITUDE, MAXIMUM_MAND_MAGNITUDE, MAXIMUM_MAND_MAGNITUDE, MAXIMUM_MAND_MAGNITUDE,};
+
+	// load the real and imaginary pixel deltas
+	__m128 da = _mm_load_ps(da_sse); // broadcast_ss(&da_total); // load_ps(da_sse);
+	__m128 db = _mm_load_ps(db_sse); // _mm_load_ps(db_sse);
+
+	// load the imaginary component
+	__m128 b = _mm_load_ps(b_sse);
+
+	// load the maximum vector magnitude
+	__m128 max = _mm_load_ps(max_sse); //load_ps(maximum_sse);
 
 	for (int y = starty; y < endy; ++y)
 	{
 		// load the real component
-		__asm movaps xmm3, a1_sse
+		__m128 a = _mm_load_ps(a1_sse);
 
 		for (int x = 0; x < pApp->m_iMandWidth; x += POINTS_CONCURRENT_SSE)
 		{
 
-			//			memset(orbit_c_sse, 0, sizeof(orbit_c_sse));
-			pApp->CalculateMandPointsSSE();
+			// place 0 in c, d, and iteration count
+			__m128 c = _mm_setzero_ps();
+			__m128 d = _mm_setzero_ps();
+			__m128 iterations = _mm_setzero_ps();
 
-			__asm movaps oword ptr[iterations_sse], xmm6
+			//
+			// start the main calculation loop
+			//
+
+			for (int i = 0; i < max_i; ++i)
+			{
+				// calculate c^2, d^2, and c^2 + d^2
+				__m128 c_squ = _mm_mul_ps(c, c);
+				__m128 d_squ = _mm_mul_ps(d, d);
+				__m128 mag = _mm_add_ps(c_squ, d_squ);
+
+				// bail out if all values are larger than the maximum magnitude (4.0f)
+				__m128 cmp = _mm_cmplt_ps(mag, max);	// compare each component to the maximum value
+				if (_mm_movemask_ps(cmp) == 0)
+				{
+					break;
+				}
+
+				// increment the iteration count for the pixels that are still less than the maxoimum magnitude
+				__m128 tmp = _mm_and_ps(cmp, max);
+				iterations = _mm_add_ps(iterations, tmp);
+
+				// calculate 2 * c * d + b
+				__m128 cd = _mm_mul_ps(c, d);
+				__m128 cd2 = _mm_add_ps(cd, cd);
+				d = _mm_add_ps(cd2, b);
+
+				// calculate c^2 - d^2 + a
+				__m128 diff = _mm_sub_ps(c_squ, d_squ);
+				c = _mm_add_ps(diff, a);
+
+				// calculate the magnitude of the n^2 new values and store them in XMM5
+				__m128 result = _mm_add_ps(c_squ, d_squ);
+
+			}
+			// adjust the counts by 4
+			iterations = _mm_div_ps(iterations, max);
+			_mm_store_ps(iterations_sse, iterations);
 
 			// normalize the iteration values between 0 and 255
-			l_ppvBits[iIndex++] = (((int)iterations_sse[0]) == pApp->get_MaxIterationsMand()) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[0]);
-			l_ppvBits[iIndex++] = (((int)iterations_sse[1]) == pApp->get_MaxIterationsMand()) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[1]);
-			l_ppvBits[iIndex++] = (((int)iterations_sse[2]) == pApp->get_MaxIterationsMand()) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[2]);
-			l_ppvBits[iIndex++] = (((int)iterations_sse[3]) == pApp->get_MaxIterationsMand()) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[3]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[0]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[0]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[1]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[1]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[2]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[2]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[3]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[3]);
 
 			// update the real components
-			__asm {
-				addps xmm3, oword ptr[da_sse]
-			}
+			a = _mm_add_ps(a, da);
 		}
 		// update the imaginary components
-		__asm addps xmm4, oword ptr[db_sse]
+		b = _mm_add_ps(b, db);
 	}
 
 	// track the start time and calculate the thread working duration
@@ -347,173 +287,392 @@ DWORD WINAPI CJuliasmApp::CalculateMandSSE(void* pArguments)
 
 	return 0;
 }
+
+//
+// Calculates a mandelbrot set using SSE2 instructions.
+// 
+
+//unsigned __stdcall CalculateMandSSE( void* pArguments )
 DWORD WINAPI CJuliasmApp::CalculateMandSSE2(void* pArguments)
 {
+	// get Application and thread inde information
 	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
 	CJuliasmApp *pApp = pThreadInfo->pApp;
+	int iThreadIndex = pThreadInfo->iThreadIndex;
+	__declspec(align(16))int max_i = pApp->get_MaxIterationsMand();
 
-	// initialize the performance counter
+	// initialzie the performance counter
 	LARGE_INTEGER tStart, tStop;
 	QueryPerformanceCounter(&tStart);
 
-	// tell the Application that the calculation is being done with SSE2
-	pApp->put_CalcPlatformMand(CalcPlatform::SSE2);
-
-	// get the thread index (for storing information back to the Application object
-	// and subdividing the task
-	int iThreadIndex = pThreadInfo->iThreadIndex;
-
+	// determine how much of the image this thread will calculate
 	double fThreadHeight = (pApp->m_b2 - pApp->m_b1) / pApp->m_iMandelbrotThreadCount;
 
-	__declspec(align(16)) double b_sse2[POINTS_CONCURRENT_SSE2];
-	__declspec(align(16)) double maximum_sse2[POINTS_CONCURRENT_SSE2] = { 4.0f, 4.0f };
-	__declspec(align(16)) double iterations_sse2[POINTS_CONCURRENT_SSE2];
-	__declspec(align(16)) double da_sse2[POINTS_CONCURRENT_SSE2];
-	__declspec(align(16)) double db_sse2[POINTS_CONCURRENT_SSE2];
-	__declspec(align(16)) double a1_sse2[POINTS_CONCURRENT_SSE2];
+	// declare calculation variables used by SSE
+	__declspec(align(16)) double iterations_sse[POINTS_CONCURRENT_SSE];
 
-	double
-		_a = pApp->m_a1,
-		_b = pApp->m_b1 + fThreadHeight * iThreadIndex,
-		da = (pApp->m_a2 - pApp->m_a1) / pApp->m_iMandWidth,
-		db = (pApp->m_b2 - pApp->m_b1) / pApp->m_iMandHeight;
+	__declspec(align(16))double
+		af = pApp->m_a1,
+		bf = pApp->m_b1 + fThreadHeight * iThreadIndex,
+		daf = (pApp->m_a2 - pApp->m_a1) / pApp->m_iMandWidth,
+		dbf = (pApp->m_b2 - pApp->m_b1) / pApp->m_iMandHeight;
 
-	b_sse2[0] = (double)_b;
-	b_sse2[1] = (double)_b;
-
-	db_sse2[0] = (double)db;
-	db_sse2[1] = (double)db;
 
 	// get the bitmap bits
-	unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpMandelbrot.get_bmpBits();
-
-	// load the imaginary component
-	__asm movapd xmm4, oword ptr[b_sse2]
-
-		// load the maximum vector size
-		__asm movapd xmm7, oword ptr[maximum_sse2]
-
-		// load an array of the first a's
-		_a = pApp->m_a1;
-	a1_sse2[0] = (double)_a; _a += da;
-	a1_sse2[1] = (double)_a; _a += da;
-
-	da_sse2[0] = (double)da * POINTS_CONCURRENT_SSE2;
-	da_sse2[1] = (double)da * POINTS_CONCURRENT_SSE2;
+	__declspec(align(16)) unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpMandelbrot.get_bmpBits();
 
 	int pixelHeight = pApp->m_iMandHeight / pApp->m_iMandelbrotThreadCount;
 	int starty = iThreadIndex * pixelHeight;
 	int endy = starty + pixelHeight;
-
 	unsigned int iIndex = 0 + starty * pApp->m_iMandWidth;
 
+	// initialize SSE variables for loading into registers
+	__declspec(align(16)) double a1_sse[POINTS_CONCURRENT_SSE2]	= {af + daf * 0, af + daf * 1};
+	const double da_total[POINTS_CONCURRENT_SSE2]				= {daf * POINTS_CONCURRENT_SSE2, daf * POINTS_CONCURRENT_SSE2};
+	const double dbf_sse[POINTS_CONCURRENT_SSE2]				= {dbf, dbf,};
+	const double bf_sse[POINTS_CONCURRENT_SSE2]					= {bf, bf,};
+	const double max_sse[POINTS_CONCURRENT_SSE2]				= {MAXIMUM_MAND_MAGNITUDE, MAXIMUM_MAND_MAGNITUDE,};
+
+	// load the real and imaginary pixel deltas
+	__m128d da = _mm_load_pd(da_total); 
+	__m128d db = _mm_load_pd(dbf_sse);
+
+	// load the imaginary component
+	__m128d b = _mm_load_pd(bf_sse);
+
+	// load the maximum vector magnitude
+	__m128d max = _mm_load_pd(max_sse); //load_pd(maximum_sse);
+
 	for (int y = starty; y < endy; ++y)
-	{
+	{	
 		// load the real component
-		__asm movapd xmm3, a1_sse2
+		__m128d a = _mm_load_pd(a1_sse);
 
 		for (int x = 0; x < pApp->m_iMandWidth; x += POINTS_CONCURRENT_SSE2)
 		{
 
-			//			memset(orbit_c_sse, 0, sizeof(orbit_c_sse));
-			pApp->CalculateMandPointsSSE2();
+			// place 0 in c, d, and iteration count
+			__m128d c = _mm_setzero_pd();
+			__m128d d = _mm_setzero_pd();
+			__m128d iterations = _mm_setzero_pd();
 
-			__asm movapd oword ptr[iterations_sse2], xmm6
+			//
+			// start the main calculation loop
+			//
 
+			for (int i = 0; i < max_i; ++i)
+			{
+				// calculate c^2, d^2, and c^2 + d^2
+				__m128d c_squ = _mm_mul_pd(c, c);
+				__m128d d_squ = _mm_mul_pd(d, d);
+				__m128d mag = _mm_add_pd(c_squ, d_squ);
+
+				// bail out if all values are larger than the maximum magnitude (4.0f)
+				__m128d cmp = _mm_cmplt_pd(mag, max);	// compare each component to the maximum value
+				if (_mm_movemask_pd(cmp) == 0)
+				{
+					break;
+				}
+
+				// increment the iteration count for the pixels that are still less than the maxoimum magnitude
+				__m128d tmp = _mm_and_pd(cmp, max);
+				iterations = _mm_add_pd(iterations, tmp);
+
+				// calculate 2 * c * d + b
+				__m128d cd = _mm_mul_pd(c, d);
+				__m128d cd2 = _mm_add_pd(cd, cd);
+				d = _mm_add_pd(cd2, b);
+
+				// calculate c^2 - d^2 + a
+				__m128d diff = _mm_sub_pd(c_squ, d_squ);
+				c = _mm_add_pd(diff, a);
+
+				// calculate the magnitude of the n^2 new values and store them in XMM5
+				__m128d result = _mm_add_pd(c_squ, d_squ);
+
+			}
+			// adjust the counts by 4
+			iterations = _mm_div_pd(iterations, max);
+			_mm_store_pd(iterations_sse, iterations);
 
 			// normalize the iteration values between 0 and 255
-			l_ppvBits[iIndex++] = (((int)iterations_sse2[0]) == pApp->get_MaxIterationsMand()) ? 0 : pApp->m_PaletteDefault.get_Color(((int)iterations_sse2[0]));
-			l_ppvBits[iIndex++] = (((int)iterations_sse2[1]) == pApp->get_MaxIterationsMand()) ? 0 : pApp->m_PaletteDefault.get_Color(((int)iterations_sse2[1]));
+			l_ppvBits[iIndex++] = (((int)iterations_sse[0]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[0]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[1]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[1]);
 
 			// update the real components
-			__asm {
-				addpd xmm3, oword ptr[da_sse2]
-			}
+			a = _mm_add_pd(a, da);
 		}
 		// update the imaginary components
-		__asm addpd xmm4, oword ptr[db_sse2]
+		b = _mm_add_pd(b, db);
 	}
+
+	// track the start time and calculate the thread working duration
 	QueryPerformanceCounter(&tStop);
 	pApp->m_tMandelbrotThreadDuration[iThreadIndex].QuadPart = tStop.QuadPart - tStart.QuadPart;
 
+	// tell the application that the thread is complete
+	PostMessage(pApp->get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETE, 0);
+
+	return 0;
+}
+
+//
+// Calculates a mandelbrot set using AVX 32-bit instructions.
+// 
+
+DWORD WINAPI CJuliasmApp::CalculateMandAVX32(void* pArguments)
+{
+	// get Application and thread inde information
+	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
+	CJuliasmApp *pApp = pThreadInfo->pApp;
+	int iThreadIndex = pThreadInfo->iThreadIndex;
+	int max_i = pApp->get_MaxIterationsMand();
+
+	// initialzie the performance counter
+	LARGE_INTEGER tStart, tStop;
+	QueryPerformanceCounter(&tStart);
+
+	// determine how much of the image this thread will calculate
+	float fThreadHeight = (float)(pApp->m_b2 - pApp->m_b1) / pApp->m_iMandelbrotThreadCount;
+
+	// declare calculation variables used by SSE
+	__declspec(align(32)) float iterations_sse[POINTS_CONCURRENT_AVX32];
+
+	__declspec(align(32))float
+		af = (float)pApp->m_a1,
+		bf = (float)pApp->m_b1 + fThreadHeight * iThreadIndex,
+		daf = (float)(pApp->m_a2 - pApp->m_a1) / pApp->m_iMandWidth,
+		dbf = (float)(pApp->m_b2 - pApp->m_b1) / pApp->m_iMandHeight;
+
+
+	// get the bitmap bits
+	unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpMandelbrot.get_bmpBits();
+
+	int pixelHeight = pApp->m_iMandHeight / pApp->m_iMandelbrotThreadCount;
+	int starty = iThreadIndex * pixelHeight;
+	int endy = starty + pixelHeight;
+	unsigned int iIndex = 0 + starty * pApp->m_iMandWidth;
+
+	// initialize SSE variables for loading into SSE data types
+	float da_total = daf * POINTS_CONCURRENT_AVX32;
+	const __declspec(align(32)) float a1_sse[POINTS_CONCURRENT_AVX32] = {af + daf * 0, af + daf * 1, af + daf * 2, af + daf * 3,af + daf * 4,af + daf * 5,af + daf * 6,af + daf * 7,};
+	const __declspec(align(32)) float max_sse = MAXIMUM_MAND_MAGNITUDE;
+
+	// load the real and imaginary pixel deltas
+//	__m256 da = _mm256_broadcast_ss(&daf); // broadcast_ss(&da_total); // load_ps(da_sse);
+	__m256 da = _mm256_broadcast_ss(&da_total); // broadcast_ss(&da_total); // load_ps(da_sse);
+	__m256 db = _mm256_broadcast_ss(&dbf); // _mm256_load_ps(db_sse);
+
+	// load the imaginary component
+	__m256 b = _mm256_broadcast_ss(&bf);
+
+	// load the maximum vector magnitude
+	__m256 max = _mm256_broadcast_ss(&max_sse); //load_ps(maximum_sse);
+
+	for (int y = starty; y < endy; ++y)
+	{
+
+		// load the real component
+		__m256 a = _mm256_load_ps(a1_sse);
+
+		for (int x = 0; x < pApp->m_iMandWidth; x += POINTS_CONCURRENT_AVX32)
+		{
+
+			// place 0 in c, d, and iteration count
+			__m256 c = _mm256_setzero_ps();
+			__m256 d = _mm256_setzero_ps();
+			__m256 iterations = _mm256_setzero_ps();
+
+			//
+			// start the main calculation loop
+			//
+
+			for (int i = 0; i < max_i; ++i)
+			{
+				// calculate c^2, d^2, and c^2 + d^2
+				__m256 c_squ = _mm256_mul_ps(c, c);
+				__m256 d_squ = _mm256_mul_ps(d, d);
+				__m256 mag = _mm256_add_ps(c_squ, d_squ);
+
+				// bail out if all values are larger than the maximum magnitude (4.0f)
+				__m256 cmp = _mm256_cmp_ps(mag, max, _CMP_LT_OQ);	// compare each component to the maximum value
+				if (_mm256_movemask_ps(cmp) == 0)
+				{
+					break;
+				}
+
+				// increment the iteration count for the pixels that are still less than the maxoimum magnitude
+				__m256 tmp = _mm256_and_ps(cmp, max);
+				iterations = _mm256_add_ps(iterations, tmp);
+
+				// calculate 2 * c * d + b
+				__m256 cd = _mm256_mul_ps(c, d);
+				__m256 cd2 = _mm256_add_ps(cd, cd);
+				d = _mm256_add_ps(cd2, b);
+
+				// calculate c^2 - d^2 + a
+				__m256 diff = _mm256_sub_ps(c_squ, d_squ);
+				c = _mm256_add_ps(diff, a);
+
+				// calculate the magnitude of the n^2 new values and store them in XMM5
+				__m256 result = _mm256_add_ps(c_squ, d_squ);
+
+			}
+			// adjust the counts by 4
+			iterations = _mm256_div_ps(iterations, max);
+			_mm256_store_ps(iterations_sse, iterations);
+
+			// normalize the iteration values between 0 and 255
+			l_ppvBits[iIndex++] = (((int)iterations_sse[0]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[0]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[1]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[1]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[2]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[2]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[3]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[3]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[4]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[4]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[5]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[5]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[6]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[6]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[7]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[7]);
+
+			// update the real components
+			a = _mm256_add_ps(a, da);
+		}
+		// update the imaginary components
+		b = _mm256_add_ps(b, db);
+	}
+
+	// track the start time and calculate the thread working duration
+	QueryPerformanceCounter(&tStop);
+	pApp->m_tMandelbrotThreadDuration[iThreadIndex].QuadPart = tStop.QuadPart - tStart.QuadPart;
+
+	// tell the application that the thread is complete
 	PostMessage(pApp->get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETE, 0);
 
 	return 0;
 }
 
 
-void CJuliasmApp::CalculateMandPointsSSE2(void)
+//
+// Calculates a mandelbrot set using AVX 32-bit instructions.
+// 
+
+DWORD WINAPI CJuliasmApp::CalculateMandAVX64(void* pArguments)
 {
-	int iMaxIterations = this->get_MaxIterationsMand();
+	// get Application and thread inde information
+	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
+	CJuliasmApp *pApp = pThreadInfo->pApp;
+	int iThreadIndex = pThreadInfo->iThreadIndex;
+	__declspec(align(32))int max_i = pApp->get_MaxIterationsMand();
 
-	__asm {
-		// place the maximum magnitude (4) in xmm7
-		//		movapd xmm7, oword ptr [maximum_sse2]
+	// initialzie the performance counter
+	LARGE_INTEGER tStart, tStop;
+	QueryPerformanceCounter(&tStart);
 
-		// place the maximum number of iterations in AX
-		mov ax, WORD PTR iMaxIterations
+	// determine how much of the image this thread will calculate
+	double fThreadHeight = (double)(pApp->m_b2 - pApp->m_b1) / pApp->m_iMandelbrotThreadCount;
 
-			// place 0 in c and d
-			xorpd xmm0, xmm0
-			xorpd xmm1, xmm1
-			xorpd xmm6, xmm6
+	// declare calculation variables used by SSE
+	__declspec(align(32)) double iterations_sse[POINTS_CONCURRENT_AVX64];
 
-			// load a and b
-			//		movapd xmm3, oword ptr [a_sse2]
-			//		movapd xmm4, oword ptr [b_sse2]
+	__declspec(align(32))double
+		af = (double)pApp->m_a1,
+		bf = (double)pApp->m_b1 + fThreadHeight * iThreadIndex,
+		daf = (double)(pApp->m_a2 - pApp->m_a1) / pApp->m_iMandWidth,
+		dbf = (double)(pApp->m_b2 - pApp->m_b1) / pApp->m_iMandHeight;
 
-			align 16
-		iterate:
-		// calculate c * d and place in xmm2
-		movapd xmm2, xmm0	// c
-			mulpd xmm2, xmm1	// * d
-			addpd xmm2, xmm2	// * 2
 
-			// calulate c^2
-			mulpd xmm0, xmm0
+	// get the bitmap bits
+	__declspec(align(32)) unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpMandelbrot.get_bmpBits();
 
-			// calculate d^2
-			mulpd xmm1, xmm1
+	int pixelHeight = pApp->m_iMandHeight / pApp->m_iMandelbrotThreadCount;
+	int starty = iThreadIndex * pixelHeight;
+	int endy = starty + pixelHeight;
+	unsigned int iIndex = 0 + starty * pApp->m_iMandWidth;
+
+	// initialize SSE variables for loading into SSE data types
+	double da_total = daf * POINTS_CONCURRENT_AVX64;
+	const __declspec(align(32)) double a1_sse[POINTS_CONCURRENT_AVX64] = {af + daf * 0, af + daf * 1, af + daf * 2, af + daf * 3,};
+	const __declspec(align(32)) double max_sse = MAXIMUM_MAND_MAGNITUDE;
+
+	// load the real and imaginary pixel deltas
+	__m256d da = _mm256_broadcast_sd(&da_total); // broadcast_ss(&da_total); // load_pd(da_sse);
+	__m256d db = _mm256_broadcast_sd(&dbf); // _mm256_load_pd(db_sse);
+
+	// load the imaginary component
+	__m256d b = _mm256_broadcast_sd(&bf);
+
+	// load the maximum vector magnitude
+	__m256d max = _mm256_broadcast_sd(&max_sse); //load_pd(maximum_sse);
+
+	for (int y = starty; y < endy; ++y)
+	{
+		// load the real component
+		__m256d a = _mm256_load_pd(a1_sse);
+
+		for (int x = 0; x < pApp->m_iMandWidth; x += POINTS_CONCURRENT_AVX64)
+		{
+
+			// place 0 in c, d, and iteration count
+			__m256d c = _mm256_setzero_pd();
+			__m256d d = _mm256_setzero_pd();
+			__m256d iterations = _mm256_setzero_pd();
 
 			//
-			// calculate the magnitude of the n^2 new values and store them in XMM5
+			// start the main calculation loop
 			//
-			movapd xmm5, xmm0
-			addpd xmm5, xmm1
 
-			// calculate c^2-d^2
-			subpd xmm0, xmm1
+			for (int i = 0; i < max_i; ++i)
+			{
+				// calculate c^2, d^2, and c^2 + d^2
+				__m256d c_squ = _mm256_mul_pd(c, c);
+				__m256d d_squ = _mm256_mul_pd(d, d);
+				__m256d mag = _mm256_add_pd(c_squ, d_squ);
 
-			// get the new d
-			movapd xmm1, xmm2
+				// bail out if all values are larger than the maximum magnitude (4.0f)
+				__m256d cmp = _mm256_cmp_pd(mag, max, _CMP_LT_OQ);	// compare each component to the maximum value
+				if (_mm256_movemask_pd(cmp) == 0)
+				{
+					break;
+				}
 
-			// add a to c^2
-			addpd xmm0, xmm3
+				// increment the iteration count for the pixels that are still less than the maxoimum magnitude
+				__m256d tmp = _mm256_and_pd(cmp, max);
+				iterations = _mm256_add_pd(iterations, tmp);
 
-			// add b to d^2
-			addpd xmm1, xmm4
+				// calculate 2 * c * d + b
+				__m256d cd = _mm256_mul_pd(c, d);
+				__m256d cd2 = _mm256_add_pd(cd, cd);
+				d = _mm256_add_pd(cd2, b);
 
-			// compare the previous iteration to the maximum value
-			cmpltpd xmm5, xmm7		// campare to max range
-			pmovmskb ecx, xmm5
-			andpd xmm5, xmm7		// use result as bitmask for counter to generate increment
-			addpd xmm6, xmm5		// add increment to counter
+				// calculate c^2 - d^2 + a
+				__m256d diff = _mm256_sub_pd(c_squ, d_squ);
+				c = _mm256_add_pd(diff, a);
 
-			test ecx, ecx
-			jz done
-			dec ax
-			jnz iterate
-			jmp done
+				// calculate the magnitude of the n^2 new values and store them in XMM5
+				__m256d result = _mm256_add_pd(c_squ, d_squ);
 
-		done :
-		// adjust the counts by 4
-		divpd xmm6, xmm7
-			//		movapd oword ptr[iterations_sse2], xmm6
+			}
+			// adjust the counts by 4
+			iterations = _mm256_div_pd(iterations, max);
+			_mm256_store_pd(iterations_sse, iterations);
 
+			// normalize the iteration values between 0 and 255
+			l_ppvBits[iIndex++] = (((int)iterations_sse[0]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[0]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[1]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[1]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[2]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[2]);
+			l_ppvBits[iIndex++] = (((int)iterations_sse[3]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[3]);
+
+			// update the real components
+			a = _mm256_add_pd(a, da);
+		}
+		// update the imaginary components
+		b = _mm256_add_pd(b, db);
 	}
+
+	// track the start time and calculate the thread working duration
+	QueryPerformanceCounter(&tStop);
+	pApp->m_tMandelbrotThreadDuration[iThreadIndex].QuadPart = tStop.QuadPart - tStart.QuadPart;
+
+	// tell the application that the thread is complete
+	PostMessage(pApp->get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETE, 0);
+
+	return 0;
 }
-
-
-
-
-

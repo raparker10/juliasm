@@ -19,7 +19,7 @@ enum CalcPlatform {
 	SSE2,
 	AVX32,
 	AVX64,
-	AVX2,
+	FMA,
 	NUMBER_CALC_PLATFORMS,
 };
 
@@ -131,10 +131,7 @@ class CJuliasmApp : public CApplication {
 	 volatile LONG m_iCalculatingMandelbrot;
 
 	 char *m_szMethod;
-	 HANDLE m_hThreadMandelbrotSSE[MAX_MAND_THREADS];
-	 HANDLE m_hThreadJuliaX87[MAX_JULIA_THREADS];
-	 HANDLE m_hThreadJuliaAVX32[MAX_JULIA_THREADS];
-	 HANDLE m_hThreadJuliaAVX64[MAX_JULIA_THREADS];
+	 HANDLE m_hThreadMandelbrot[MAX_MAND_THREADS];
 
 	 //
 	 // CPU feature identification
@@ -193,9 +190,11 @@ public:
 	void put_MaxIterationsJulia(int iMaxIterationsJulia);
 	inline int get_MaxIterationsJulia(void) const { return this->m_iMaxIterationsJulia; }
 
-	static DWORD WINAPI CJuliasmApp::CalculateJuliaX87(void* pArguments);
-	static DWORD WINAPI CJuliasmApp::CalculateJuliaAVX32(void* pArguments);
-	static DWORD WINAPI CJuliasmApp::CalculateJuliaAVX64(void* pArguments);
+	static DWORD WINAPI CalculateJuliaX87(void* pArguments);
+	static DWORD WINAPI CalculateJuliaSSE(void* pArguments);
+	static DWORD WINAPI CalculateJuliaSSE2(void* pArguments);
+	static DWORD WINAPI CalculateJuliaAVX32(void* pArguments);
+	static DWORD WINAPI CalculateJuliaAVX64(void* pArguments);
 
 	void CalculateMandelbrot(void);
 	void StartMandelbrotx87(HWND hWnd);
@@ -209,9 +208,9 @@ public:
 	void CJuliasmApp::CalculateMandPointsSSE(void);
 
 	static DWORD WINAPI CalculateMandX87(void* pArguments);
-	void CalculateMandX87SingleThread(void); // Note: single-threaded
-
 	static DWORD WINAPI CalculateMandSSE2(void* pArguments);
-	void CalculateMandPointsSSE2(void);
+	static DWORD WINAPI CalculateMandAVX32(void* pArguments);
+	static DWORD WINAPI CalculateMandAVX64(void* pArguments);
+
 
 };
