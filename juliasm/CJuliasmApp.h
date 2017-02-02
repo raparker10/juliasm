@@ -17,7 +17,8 @@ enum CalcPlatform {
 	x87,
 	SSE,
 	SSE2,
-	AVX,
+	AVX32,
+	AVX64,
 	AVX2,
 	NUMBER_CALC_PLATFORMS,
 };
@@ -29,10 +30,14 @@ class CJuliasmApp : public CApplication {
 	TThreadInfo m_ThreadInfoMand[MAX_MAND_THREADS];
 	TThreadInfo m_ThreadInfoJulia[MAX_JULIA_THREADS];
 	TThreadInfo m_ThreadInfoJuliaX87[MAX_JULIA_THREADS];
+	TThreadInfo m_ThreadInfoJuliaAVX32[MAX_JULIA_THREADS];
+	TThreadInfo m_ThreadInfoJuliaAVX64[MAX_JULIA_THREADS];
 
 	HANDLE m_hThreadJulia[MAX_JULIA_THREADS];
 	DWORD  m_dwThreadJuliaID[MAX_JULIA_THREADS];
 	DWORD  m_dwThreadJuliaIDX87[MAX_JULIA_THREADS];
+	DWORD  m_dwThreadJuliaIDAVX32[MAX_JULIA_THREADS];
+	DWORD  m_dwThreadJuliaIDAVX64[MAX_JULIA_THREADS];
 	CalcPlatform m_CalcPlatformMand;
 	CalcPlatform m_CalcPlatformJulia;
 
@@ -128,6 +133,8 @@ class CJuliasmApp : public CApplication {
 	 char *m_szMethod;
 	 HANDLE m_hThreadMandelbrotSSE[MAX_MAND_THREADS];
 	 HANDLE m_hThreadJuliaX87[MAX_JULIA_THREADS];
+	 HANDLE m_hThreadJuliaAVX32[MAX_JULIA_THREADS];
+	 HANDLE m_hThreadJuliaAVX64[MAX_JULIA_THREADS];
 
 	 //
 	 // CPU feature identification
@@ -187,13 +194,15 @@ public:
 	inline int get_MaxIterationsJulia(void) const { return this->m_iMaxIterationsJulia; }
 
 	static DWORD WINAPI CJuliasmApp::CalculateJuliaX87(void* pArguments);
-	static DWORD WINAPI CJuliasmApp::CalculateJuliaAVX(void* pArguments);
+	static DWORD WINAPI CJuliasmApp::CalculateJuliaAVX32(void* pArguments);
+	static DWORD WINAPI CJuliasmApp::CalculateJuliaAVX64(void* pArguments);
 
 	void CalculateMandelbrot(void);
 	void StartMandelbrotx87(HWND hWnd);
 	void StartMandelbrotSSE(HWND hWnd);
 	void StartMandelbrotSSE2(HWND hWnd);
-	void StartMandelbrotAVX(HWND hWnd);
+	void StartMandelbrotAVX32(HWND hWnd);
+	void StartMandelbrotAVX64(HWND hWnd);
 	void StartMandelbrotAVX2(HWND hWnd);
 
 	static DWORD WINAPI CJuliasmApp::CalculateMandSSE(void* pArguments);
