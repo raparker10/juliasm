@@ -378,14 +378,6 @@ DWORD WINAPI CJuliasmApp::CalculateMandSSE2(void* pArguments)
 		da = (pApp->m_a2 - pApp->m_a1) / pApp->m_iMandWidth,
 		db = (pApp->m_b2 - pApp->m_b1) / pApp->m_iMandHeight;
 
-
-	//	SetThreadAffinityMask(GetCurrentThread(), 1 << iThread);
-
-	// RAP gotta implement this functionality
-	//	::da = da;
-	//::db = db;
-
-
 	b_sse2[0] = (double)_b;
 	b_sse2[1] = (double)_b;
 

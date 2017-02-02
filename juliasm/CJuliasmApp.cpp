@@ -1036,7 +1036,6 @@ void CJuliasmApp::UpdateCalcPlatformMenuMand(void)
 //
 // Update the platform menu to indicate which calculation platform is being used
 // for the calculation of Julia sets
-// RAP: This mmenu is not yet implemented
 void CJuliasmApp::UpdateCalcPlatformMenuJulia(void)
 {
 	// convert the current platform into a menu item
