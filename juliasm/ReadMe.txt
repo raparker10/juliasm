@@ -85,15 +85,19 @@ To-do
 * Implement Mandelbrot functions in AVX-32
 * Implement Mandelbrot functions in AVX-64
 * Implement Mandelbrot functions in AVX2
-* Implement Mandelbrot functions in OpoenCL
-* Implement Julia Sett functions in SSE
-* Implement Julia Sett functions in SSE2
+* Implement Mandelbrot functions in OpenCL
+* Implement Julia Set functions in SSE
+* Implement Julia Set functions in SSE2
 * Implement Mandelbrot functions in AVX2
 * Implement Mandelbrot functions in OpenCL
 * Incorporate FMA
 * Implement panning (e.g. with click-and-drag)
-* Implement swiching zooming and panning between the Mandelbbrot and Julia images
-* Enable changing the relative sizes of each image so that more of the Mandelbrot set can be seen / explored
+* Implement swiching zooming and panning between the Mandelbrot 
+    and Julia images
+* Enable changing the relative sizes of each image so that more of the 
+    Mandelbrot set can be seen / explored
 * Write x87 code in Assembly
-* Ensure that julia set pixels are numerically square.  Currently they change aspect ratio along with the window.
-* Update mousewheel functionality to zoom from the image center, not the mouse pointer location
+* Ensure that julia set pixels are numerically square.  Currently they change
+    aspect ratio along with the window.
+* Update mousewheel functionality to zoom from the image center, not the 
+    mouse pointer location
