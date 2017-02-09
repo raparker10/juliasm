@@ -47,9 +47,12 @@
       <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <FloatingPointExceptions>true</FloatingPointExceptions>
       <AssemblerOutput>NoListing</AssemblerOutput>
+      <AdditionalIncludeDirectories>$(INTELOCLSDKROOT)\include;$(INTELOCLSDKROOT)\include\CL;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(INTELOCLSDKROOT)\lib\x86</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);;OpenCL.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -60,11 +63,14 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <AssemblerOutput>NoListing</AssemblerOutput>
+      <AdditionalIncludeDirectories>$(INTELOCLSDKROOT)\include;$(INTELOCLSDKROOT)\include\CL;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>$(INTELOCLSDKROOT)\lib\x86</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);;OpenCL.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -78,12 +84,14 @@
     <ClCompile Include="CPalette.cpp" />
     <ClCompile Include="cpu.cpp" />
     <ClCompile Include="juliasm.cpp" />
+    <ClCompile Include="COpenCL.cpp" />
     <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CApplication.h" />
     <ClInclude Include="CBitmap.h" />
     <ClInclude Include="CJuliasmApp.h" />
+    <ClInclude Include="COpenCL.h" />
     <ClInclude Include="CPalette.h" />
     <ClInclude Include="CPixelPoint.h" />
     <ClInclude Include="cpu.h" />
@@ -101,6 +109,9 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\fractals.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

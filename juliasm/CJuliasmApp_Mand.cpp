@@ -57,14 +57,14 @@ DWORD WINAPI CJuliasmApp::CalculateMandX87(void* pArguments)
 			int i;
 			for (i = 0; i < pApp->get_MaxIterationsMand(); ++i)
 			{
-				cd2 = 2 * c * d;
 				c2 = c * c;
 				d2 = d * d;
 				mag = c2 + d2;
-				c = c2 - d2 + _a;
-				d = cd2 + _b;
 				if (mag > 4.0)
 					break;
+				cd2 = 2 * c * d;
+				c = c2 - d2 + _a;
+				d = cd2 + _b;
 			}
 			_a += da;
 
@@ -167,6 +167,10 @@ DWORD WINAPI CJuliasmApp::CalculateMandSSE(void* pArguments)
 	// get Application and thread inde information
 	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
 	CJuliasmApp *pApp = pThreadInfo->pApp;
+	if (pApp == NULL)
+	{
+		return 1; // return error
+	}
 	int iThreadIndex = pThreadInfo->iThreadIndex;
 	__declspec(align(16))int max_i = pApp->get_MaxIterationsMand();
 
@@ -189,6 +193,15 @@ DWORD WINAPI CJuliasmApp::CalculateMandSSE(void* pArguments)
 
 	// get the bitmap bits
 	__declspec(align(16)) unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpMandelbrot.get_bmpBits();
+
+	if (l_ppvBits == NULL)
+	{
+		return 1; // return error
+	}
+
+	// RAP delete the following check
+	if (l_ppvBits == NULL)
+		MessageBox(NULL, "l_ppvBits is null", "Error", MB_ICONSTOP | MB_OK);
 
 	int pixelHeight = pApp->m_iMandHeight / pApp->m_iMandelbrotThreadCount;
 	int starty = iThreadIndex * pixelHeight;
@@ -265,6 +278,9 @@ DWORD WINAPI CJuliasmApp::CalculateMandSSE(void* pArguments)
 			iterations = _mm_div_ps(iterations, max);
 			_mm_store_ps(iterations_sse, iterations);
 
+			// RAP delete the following check
+			if (l_ppvBits == NULL)
+				MessageBox(NULL, "l_ppvBits is null", "Error", MB_ICONSTOP | MB_OK);
 			// normalize the iteration values between 0 and 255
 			l_ppvBits[iIndex++] = (((int)iterations_sse[0]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[0]);
 			l_ppvBits[iIndex++] = (((int)iterations_sse[1]) == max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_sse[1]);

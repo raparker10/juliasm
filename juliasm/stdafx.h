@@ -21,10 +21,12 @@
 #include <immintrin.h>
 #include <math.h>
 #include <Windowsx.h>
+#include <CL\cl.h>
 
+#include "CPalette.h"
+#include "COpenCL.h"
 #include "cpu.h"
 #include "juliasm.h"
-#include "CPalette.h"
 #include "CBitmap.h"
 #include "CApplication.h"
 #include "CJuliasmApp.h"

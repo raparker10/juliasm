@@ -54,10 +54,6 @@ void CPalette::UpdateColors(void)
 		}
 		return;
 	}
-	// get the red, green, and blue color ramps
-	unsigned char ucRed[MAX_COLORS];
-	unsigned char ucGreen[MAX_COLORS];
-	unsigned char ucBlue[MAX_COLORS];
 
 	FillPalette(ucRed, l_ColorPoints[CHANNEL_RED], l_iNumberColorPoints[CHANNEL_RED]);
 	FillPalette(ucGreen, l_ColorPoints[CHANNEL_GREEN], l_iNumberColorPoints[CHANNEL_GREEN]);

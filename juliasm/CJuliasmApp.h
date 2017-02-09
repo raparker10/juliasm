@@ -20,12 +20,16 @@ enum CalcPlatform {
 	AVX32,
 	AVX64,
 	FMA,
+	OpenCL_CPU,
+	OpenCL_GPU,
 	NUMBER_CALC_PLATFORMS,
 };
 
-#define THREAD_STACK_SIZE 1024
+#define THREAD_STACK_SIZE 20480
 
 class CJuliasmApp : public CApplication {
+	COpenCLMand m_OCLMand;
+	COpenCLJulia m_OCLJulia;
 
 	TThreadInfo m_ThreadInfoMand[MAX_MAND_THREADS];
 	TThreadInfo m_ThreadInfoJulia[MAX_JULIA_THREADS];
@@ -101,7 +105,6 @@ class CJuliasmApp : public CApplication {
 	 float m_jd1_sse, m_jd2_sse;
 
 	 int m_iMaxIterationsJulia;
-	 int m_iJMaxIter;
 	 int m_iJMaxThread;
 
 	//
@@ -124,7 +127,7 @@ class CJuliasmApp : public CApplication {
 	 double m_a1, m_a2, m_b1, m_b2;
 
 	// per-pixel offsets in the horizontal (da) and vertical (db) directions
-	 double m_da, m_db;
+//	 double m_da, m_db;
 	 int m_iMaxIterationsMand;
 
 	 volatile LONG m_iCalculatingJulia;
@@ -142,6 +145,19 @@ class CJuliasmApp : public CApplication {
 	void Initialize(void);
 	void InitializeMand(void);
 
+	//
+	// mouse dragging
+	//
+	bool m_bDragging;
+	int m_iDragStartX, m_iDragStartY,
+		m_iDragCurrentX, m_iDragCurrentY,
+		m_iDragEndX, m_iDragEndY;
+	double m_start_a1, 
+		m_start_b1, 
+		m_start_a2, 
+		m_start_b2;
+
+
 public:
 	CJuliasmApp();
 	~CJuliasmApp();
@@ -156,6 +172,12 @@ public:
 	virtual bool handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y);
 	virtual bool handle_lbuttondoubleclick(HWND hWnd, WPARAM wvKeyDown, WORD x, WORD y);
 	virtual bool handle_mousewheel(HWND hWnd, WORD wvKeys, int iRotationAmount, int x, int y);
+	virtual bool handle_lbuttondown(HWND hWnd, WORD wvKeys, int x, int y);
+	virtual bool handle_lbuttonup(HWND hWnd, WORD	wvKeys, int x, int y);	
+
+
+	void ZoomInMand(int x=-1, int y = -1);
+	void ZoomOutMand(void);
 
 	void PostRecalcMand(void);
 	void PostRecalcJulia(void);
@@ -203,6 +225,9 @@ public:
 	void StartMandelbrotAVX32(HWND hWnd);
 	void StartMandelbrotAVX64(HWND hWnd);
 	void StartMandelbrotAVX2(HWND hWnd);
+	void StartMandelbrotOpenCL_CPU(HWND hWnd);
+	void StartMandelbrotOpenCL_GPU(HWND hWnd);
+
 
 	static DWORD WINAPI CJuliasmApp::CalculateMandSSE(void* pArguments);
 	void CJuliasmApp::CalculateMandPointsSSE(void);

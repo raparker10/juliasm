@@ -1,16 +1,24 @@
 #include "stdafx.h"
 
+
+static int mousemove_count;
+static int calcblock_count;
+static int calcstart_count;
+static int calccomplete_count;
+static int drawcomplete_count;
+
+
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 
 // application initialization
-CJuliasmApp::CJuliasmApp() 
+CJuliasmApp::CJuliasmApp()
 {
 	Initialize();
 };
 
 // application shutdown
-CJuliasmApp::~CJuliasmApp() 
+CJuliasmApp::~CJuliasmApp()
 {
 	if (m_hfInfo != INVALID_HANDLE_VALUE)
 	{
@@ -42,8 +50,9 @@ void CJuliasmApp::Initialize(void)
 	m_jd1_sse = -1.0;
 	m_jd2_sse = 1.0;
 
+	m_OCLJulia.put_Boundary(m_jc1_sse, m_jd1_sse, m_jc2_sse, m_jd2_sse);
+
 	put_MaxIterationsJulia(1024);
-	m_iJMaxIter = 0;
 	m_iJMaxThread = 0;
 
 	// initialize thread-handling variables
@@ -67,7 +76,7 @@ void CJuliasmApp::Initialize(void)
 	// setup the default palette
 
 	// setup the red color channel
-	m_PaletteDefault.PushColorPoint(0, CPixelPoint(0,0));
+	m_PaletteDefault.PushColorPoint(0, CPixelPoint(0, 0));
 	m_PaletteDefault.PushColorPoint(0, CPixelPoint(12, 255));
 	m_PaletteDefault.PushColorPoint(0, CPixelPoint(200, 255));
 	m_PaletteDefault.PushColorPoint(0, CPixelPoint(255, 0));
@@ -117,6 +126,7 @@ void CJuliasmApp::InitializeMand(void)
 	m_a2 = 2.0f;
 	m_b1 = -2.0f;
 	m_b2 = 2.0f;
+	m_OCLMand.put_Boundary(m_a1, m_b1, m_a2, m_b2);
 
 	// per-pixel offsets in the horizontal (da) and vertical (db) directions
 	put_MaxIterationsMand(1024);
@@ -127,40 +137,15 @@ void CJuliasmApp::InitializeMand(void)
 //
 bool CJuliasmApp::handle_lbuttondoubleclick(HWND hWnd, WPARAM wvKeyDown, WORD x, WORD y)
 {
-	double height, width, da, db, anew, bnew;
-
-	// only proceed if there are no mandelbrot calculations in the works
-	if (m_iCalculatingMandelbrot == 0)
-	{
-		// adjust the y value for the top of the mandelbrot image
-		y = y - JULIA_TOP;
-
-		da = (m_a2 - m_a1) / m_iMandWidth;
-		db = (m_b2 - m_b1) / m_iMandHeight;
-		width = m_a2 - m_a1;
-		height = m_b2 - m_b1;
-		anew = m_a1 + da * x;
-		bnew = m_b1 + db * y;
-
-		width = width * 0.8;
-		height = height * 0.8;
-		m_a1 = anew - (width / 2.0);
-		m_a2 = m_a1 + width;
-
-		m_b1 = bnew - (height / 2.0);
-		m_b2 = m_b1 + height;
-
-		CalculateMandelbrot();
-		return true;
-	}
-	return false;
+	ZoomInMand(x, y);
+	return true;
 }
 
 //
 // Handle a repaint of the screen
 //
-bool CJuliasmApp::handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps) 
-{ 
+bool CJuliasmApp::handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps)
+{
 	int iLines = 0;		// number of lines drawn to the screen
 	char szBuf[256];
 
@@ -196,22 +181,6 @@ bool CJuliasmApp::handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps)
 	rc.right = m_iMandWidth;
 	FillRect(hdc, &rc, (HBRUSH)GetStockObject(WHITE_BRUSH));
 
-/*
-	//		sprintf(buf, "Mandelbrot: Duration=%u:%u, Ticks Per Clock=%u:%u, da=%e, db=%e", tMandelbrotTotal.HighPart, tMandelbrotTotal.LowPart, ticksPerSecond.HighPart, ticksPerSecond.LowPart, ::da, ::db);
-	sprintf_s(szBuf, _countof(szBuf),"Mandelbrot: Duration=%u, Ticks Per Clock=%u:%u, da=%e, db=%e", m_tMandelbrotTotal.QuadPart, m_ticksPerSecond.HighPart, m_ticksPerSecond.LowPart, m_da, m_db);
-	TextOut(hdc, 0, 0, szBuf, lstrlen(szBuf));
-
-	sprintf_s(szBuf, _countof(szBuf),"Method=%s, p(1)=(%f, %f), p(2)=(%f, %f)", m_szMethod, m_a1, m_b1, m_a2, m_b2);
-	TextOut(hdc, 0, 20, szBuf, lstrlen(szBuf));
-
-	// display the julia set parameters
-	sprintf_s(szBuf, _countof(szBuf), "Julia: a=%f, b=%f, %s, maxiter=%d, maxthread=%d                  ", m_ja_sse, m_jb_sse, (m_iCalculatingJulia == 0) ? "Not Calculating" : "Calculating", m_iJMaxIter, m_iJMaxThread);
-	TextOut(hdc, 500, 20, szBuf, lstrlen(szBuf));
-
-	// display the julia set parameters
-	sprintf_s(szBuf, _countof(szBuf),"Julia: Duration=%u ms  ", m_iTotalTicks.QuadPart);
-	TextOut(hdc, 0, 35, szBuf, lstrlen(szBuf));
-*/
 	//
 	// display information
 	//
@@ -222,14 +191,14 @@ bool CJuliasmApp::handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps)
 
 	// mandelbrot section header
 	iLen = sprintf_s(
-				szBuf, 
-				_countof(szBuf), 
-				"Mandelbrot - %s - %d iter", 
-				get_CalcPlatformName(
-					szPlatform, 
-					_countof(szPlatform), 
-					get_CalcPlatformMand()), 
-				get_MaxIterationsMand());
+		szBuf,
+		_countof(szBuf),
+		"Mandelbrot - %s - %d iter",
+		get_CalcPlatformName(
+		szPlatform,
+		_countof(szPlatform),
+		get_CalcPlatformMand()),
+		get_MaxIterationsMand());
 
 	ExtTextOut(hdc, 0, y, ETO_CLIPPED, &rc, szBuf, iLen, NULL);
 	y += m_tmInfo.tmHeight;
@@ -261,14 +230,14 @@ bool CJuliasmApp::handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps)
 	// Julia Set section header
 	y += m_tmInfo.tmHeight;
 	iLen = sprintf_s(
-				szBuf, 
-				_countof(szBuf), 
-				"Julia - %s - %d iter", 
-				get_CalcPlatformName(
-					szPlatform, 
-					_countof(szPlatform), 
-					get_CalcPlatformJulia()), 
-				get_MaxIterationsJulia()); 
+		szBuf,
+		_countof(szBuf),
+		"Julia - %s - %d iter",
+		get_CalcPlatformName(
+		szPlatform,
+		_countof(szPlatform),
+		get_CalcPlatformJulia()),
+		get_MaxIterationsJulia());
 
 	ExtTextOut(hdc, 0, y, ETO_CLIPPED, &rc, szBuf, iLen, NULL);
 	y += m_tmInfo.tmHeight;
@@ -288,7 +257,7 @@ bool CJuliasmApp::handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps)
 	ExtTextOut(hdc, m_tmInfo.tmAveCharWidth, y, ETO_CLIPPED, &rc, szBuf, iLen, NULL);
 	y += m_tmInfo.tmHeight;
 
-	
+
 
 	SelectObject(hdc, hOldFont);
 	return true;
@@ -297,8 +266,8 @@ bool CJuliasmApp::handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps)
 //
 // handle main window startup 
 //
-bool CJuliasmApp::handle_create(HWND hWnd, LPCREATESTRUCT *lpcs) 
-{ 
+bool CJuliasmApp::handle_create(HWND hWnd, LPCREATESTRUCT *lpcs)
+{
 	// 
 	// create the font for information display
 	//
@@ -309,20 +278,26 @@ bool CJuliasmApp::handle_create(HWND hWnd, LPCREATESTRUCT *lpcs)
 	GetTextMetrics(hdc, &m_tmInfo);
 	ReleaseDC(hWnd, hdc);
 
-
-/*	// create the julia thread pool
-	for (int i = 0; i < MAX_JULIA_THREADS; ++i)
-	{
-		m_ThreadInfoJulia[i].iThreadIndex = i;
-		m_ThreadInfoJulia[i].pApp = this;
-		m_hThreadJulia[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateJuliaAVX32, (LPVOID)&m_ThreadInfoJulia[i], 0, &m_dwThreadJuliaID[i]);
-	}
-*/
 	// setup the application defaults
 	put_CalcPlatformMand(CalcPlatform::SSE);
 	put_MaxIterationsMand(1024);
 	put_CalcPlatformJulia(CalcPlatform::AVX32);
 	put_MaxIterationsJulia(1024);
+
+	//
+	// OpenCL preparation
+	//
+	m_OCLMand.put_Palette(256, m_PaletteDefault.get_RedChannel(), m_PaletteDefault.get_GreenChannel(), m_PaletteDefault.get_BlueChannel());
+	m_OCLMand.UsePlatformDefault();
+	m_OCLMand.UseDeviceByType(CL_DEVICE_TYPE_GPU);
+	m_OCLMand.LoadProgram("fractals.cl");
+	m_OCLMand.PrepareProgram();
+
+	m_OCLJulia.put_Palette(256, m_PaletteDefault.get_RedChannel(), m_PaletteDefault.get_GreenChannel(), m_PaletteDefault.get_BlueChannel());
+	m_OCLJulia.UsePlatformDefault();
+	m_OCLJulia.UseDeviceByType(CL_DEVICE_TYPE_GPU);
+	m_OCLJulia.LoadProgram("fractals.cl");
+	m_OCLJulia.PrepareProgram();
 
 
 	// request a redraw of the mandalbrot image
@@ -344,7 +319,6 @@ void CJuliasmApp::StartMandelbrotx87(HWND hWnd)
 	// only recalculate if there is not an ongoing calculation
 	if (m_iCalculatingMandelbrot != 0)
 	{
-		MessageBeep(-1);
 		return;
 	}
 
@@ -380,7 +354,6 @@ void CJuliasmApp::StartMandelbrotSSE(HWND hWnd)
 	// only recalculate if there is not an ongoing calculation
 	if (m_iCalculatingMandelbrot != 0)
 	{
-		MessageBeep(-1);
 		return;
 	}
 	if (get_CalcPlatformMand() != CalcPlatform::SSE)
@@ -409,6 +382,10 @@ void CJuliasmApp::StartMandelbrotSSE(HWND hWnd)
 		InterlockedIncrement(&m_iCalculatingMandelbrot);
 		m_ThreadInfoMand[i].iThreadIndex = i;
 		m_ThreadInfoMand[i].pApp = this;
+		if (this->m_bmpMandelbrot.get_bmpBits() == NULL)
+		{
+			MessageBox(NULL, "bitmap is NULL", "Error", MB_ICONEXCLAMATION | MB_OK);
+		}
 		m_hThreadMandelbrot[i] = CreateThread(NULL, THREAD_STACK_SIZE, CalculateMandSSE, (LPVOID)&m_ThreadInfoMand[i], 0, NULL);
 	}
 }
@@ -421,7 +398,6 @@ void CJuliasmApp::StartMandelbrotSSE2(HWND hWnd)
 	// only recalculate if there is not an ongoing calculation
 	if (m_iCalculatingMandelbrot != 0)
 	{
-		MessageBeep(-1);
 		return;
 	}
 	if (get_CalcPlatformMand() != CalcPlatform::SSE2)
@@ -464,10 +440,9 @@ void CJuliasmApp::StartMandelbrotAVX32(HWND hWnd)
 	// only recalculate if there is not an ongoing calculation
 	if (m_iCalculatingMandelbrot != 0)
 	{
-		MessageBeep(-1);
 		return;
 	}
-	
+
 	if (get_CalcPlatformMand() != CalcPlatform::AVX32)
 	{
 		put_CalcPlatformMand(CalcPlatform::AVX32);
@@ -508,7 +483,6 @@ void CJuliasmApp::StartMandelbrotAVX64(HWND hWnd)
 	// only recalculate if there is not an ongoing calculation
 	if (m_iCalculatingMandelbrot != 0)
 	{
-		MessageBeep(-1);
 		return;
 	}
 	if (get_CalcPlatformMand() != CalcPlatform::AVX64)
@@ -551,12 +525,56 @@ void CJuliasmApp::StartMandelbrotAVX2(HWND hWnd)
 	MessageBox(hWnd, "Function not implemented.", "Error", MB_ICONINFORMATION | MB_OK);
 }
 
+void CJuliasmApp::StartMandelbrotOpenCL_CPU(HWND hWnd)
+{
+	MessageBox(hWnd, "Function not implemented.", "Error", MB_ICONINFORMATION | MB_OK);
+}
+void CJuliasmApp::StartMandelbrotOpenCL_GPU(HWND hWnd)
+{
+	// only recalculate if there is not an ongoing calculation
+	if (m_iCalculatingMandelbrot != 0)
+	{
+		return;
+	}
+	if (get_CalcPlatformMand() != CalcPlatform::OpenCL_GPU)
+	{
+		put_CalcPlatformMand(CalcPlatform::OpenCL_GPU);
+	}
+
+	// save the calculation platform
+	m_szMethod = "OpenCL GPU";
+
+	// setup the performance counters
+	// record the proess start time
+	QueryPerformanceCounter(&m_tMandelbrotProcessStart);
+
+	// setup performance measurement
+	m_tMandelbrotProcessStop.QuadPart = 0;
+	m_tMandelbrotProcessDurationTotal.QuadPart = 0;
+	m_tMandelbrotThreadDurationTotal.QuadPart = 0;
+	SecureZeroMemory(&m_tMandelbrotThreadDuration, sizeof(m_tMandelbrotThreadDuration));
+
+
+	// start the threads
+	cl_int error;
+	m_iCalculatingMandelbrot = 1;
+	if (false == m_OCLMand.ExecuteProgram(0, &error))
+	{
+		char szBuf[64];
+		sprintf_s(szBuf, _countof(szBuf), "Error %d executing OpenCL kernel.", error);
+		MessageBox(NULL, szBuf, "Error", MB_ICONEXCLAMATION);
+	}
+
+	// tell the application that the thread is complete
+	PostMessage(get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETE_OPENCL, 0);
+}
+
 
 //
 // handle command messages 
 //
 bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
-{ 
+{
 	int i;
 
 	switch (wmID)
@@ -579,6 +597,14 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 
 	case IDM_CALCULATE_MAND_AVX64:
 		StartMandelbrotAVX64(hWnd);
+		break;
+
+	case IDM_CALCULATE_MAND_OPENCL_CPU:
+		StartMandelbrotOpenCL_CPU(hWnd);
+		break;
+
+	case IDM_CALCULATE_MAND_OPENCL_GPU:
+		StartMandelbrotOpenCL_GPU(hWnd);
 		break;
 
 	case IDM_CLEAR_MAND:
@@ -624,6 +650,15 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 		RecalculateJulia();
 		return 0;
 
+	case IDM_CALCULATE_JULIA_OPENCL_CPU:
+		put_CalcPlatformJulia(CalcPlatform::OpenCL_CPU);
+		RecalculateJulia();
+		break;
+
+	case IDM_CALCULATE_JULIA_OPENCL_GPU:
+		put_CalcPlatformJulia(CalcPlatform::OpenCL_GPU);
+		RecalculateJulia();
+		break;
 
 	case IDM_RECALCULATE_JULIA:
 		RecalculateJulia();
@@ -640,6 +675,18 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 				CloseHandle(m_hThreadMandelbrot[i]);
 				m_tMandelbrotThreadDurationTotal.QuadPart += m_tMandelbrotThreadDuration[i].QuadPart;
 			}
+			// update the total process duration
+			QueryPerformanceCounter(&m_tMandelbrotProcessStop);
+			m_tMandelbrotProcessDurationTotal.QuadPart = m_tMandelbrotProcessStop.QuadPart - m_tMandelbrotProcessStart.QuadPart;
+			InvalidateRect(hWnd, NULL, FALSE);
+		}
+		break;
+
+	case IDM_THREADCOMPLETE_OPENCL:
+		if (0 == InterlockedDecrementAcquire(&m_iCalculatingMandelbrot))
+		{
+			m_tMandelbrotProcessDurationTotal.QuadPart = 0;
+
 			// update the total process duration
 			QueryPerformanceCounter(&m_tMandelbrotProcessStop);
 			m_tMandelbrotProcessDurationTotal.QuadPart = m_tMandelbrotProcessStop.QuadPart - m_tMandelbrotProcessStart.QuadPart;
@@ -737,24 +784,19 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 			InvalidateRect(hWnd, NULL, FALSE);
 		}
 		break;
-/*
-		// note: the julia calculation does not kill the threads.  they are reused for subsequent calculations
+	case IDM_THREADCOMPLETEJULIA_OPENCL:
 		if (0 == InterlockedDecrementAcquire(&m_iCalculatingJulia))
 		{
-			// determine the total thread working duration
-			for (i = 0, m_tJuliaThreadDurationTotal.QuadPart = 0; i < MAX_JULIA_THREADS; ++i)
-			{
-				m_tJuliaThreadDurationTotal.QuadPart += m_tJuliaThreadDuration[i].QuadPart;
-			}
+			m_tJuliaProcessDurationTotal.QuadPart = 0;
 
-			// determine the total process working duration
+			// update the total process duration
 			QueryPerformanceCounter(&m_tJuliaProcessStop);
 			m_tJuliaProcessDurationTotal.QuadPart = m_tJuliaProcessStop.QuadPart - m_tJuliaProcessStart.QuadPart;
-
 			InvalidateRect(hWnd, NULL, FALSE);
+			UpdateWindow(hWnd);
 		}
 		break;
-*/
+
 	case IDM_ABOUT:
 		DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_ABOUTBOX), get_hWnd(), About);
 		break;
@@ -765,30 +807,30 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 
 	case IDM_ITERATIONS_MAND_64:
 		put_MaxIterationsMand(64);
-		PostRecalcMand(); 
+		PostRecalcMand();
 		break;
 
-	case IDM_ITERATIONS_MAND_128: 
+	case IDM_ITERATIONS_MAND_128:
 		put_MaxIterationsMand(128);
 		PostRecalcMand();
 		break;
 
-	case IDM_ITERATIONS_MAND_256: 
+	case IDM_ITERATIONS_MAND_256:
 		put_MaxIterationsMand(256);
 		PostRecalcMand();
 		break;
 
-	case IDM_ITERATIONS_MAND_512: 
+	case IDM_ITERATIONS_MAND_512:
 		put_MaxIterationsMand(512);
 		PostRecalcMand();
 		break;
 
-	case IDM_ITERATIONS_MAND_1024: 
+	case IDM_ITERATIONS_MAND_1024:
 		put_MaxIterationsMand(1024);
 		PostRecalcMand();
 		break;
 
-	case IDM_ITERATIONS_MAND_2048: 
+	case IDM_ITERATIONS_MAND_2048:
 		put_MaxIterationsMand(2048);
 		PostRecalcMand();
 		break;
@@ -798,17 +840,17 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 		PostRecalcMand();
 		break;
 
-	case IDM_ITERATIONS_MAND_8192: 
+	case IDM_ITERATIONS_MAND_8192:
 		put_MaxIterationsMand(8192);
 		PostRecalcMand();
 		break;
 
-	case IDM_ITERATIONS_MAND_16384: 
+	case IDM_ITERATIONS_MAND_16384:
 		put_MaxIterationsMand(16384);
 		PostRecalcMand();
 		break;
 
-	case IDM_ITERATIONS_MAND_32767: 
+	case IDM_ITERATIONS_MAND_32767:
 		put_MaxIterationsMand(32768);
 		PostRecalcMand();
 		break;
@@ -818,27 +860,27 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 		PostRecalcJulia();
 		break;
 
-	case IDM_ITERATIONS_JULIA_128: 
+	case IDM_ITERATIONS_JULIA_128:
 		put_MaxIterationsJulia(128);
 		PostRecalcJulia();
 		break;
 
-	case IDM_ITERATIONS_JULIA_256: 
+	case IDM_ITERATIONS_JULIA_256:
 		put_MaxIterationsJulia(256);
 		PostRecalcJulia();
 		break;
 
-	case IDM_ITERATIONS_JULIA_512: 
+	case IDM_ITERATIONS_JULIA_512:
 		put_MaxIterationsJulia(512);
 		PostRecalcJulia();
 		break;
 
-	case IDM_ITERATIONS_JULIA_1024: 
+	case IDM_ITERATIONS_JULIA_1024:
 		put_MaxIterationsJulia(1024);
 		PostRecalcJulia();
 		break;
 
-	case IDM_ITERATIONS_JULIA_2048: 
+	case IDM_ITERATIONS_JULIA_2048:
 		put_MaxIterationsJulia(2048);
 		PostRecalcJulia();
 		break;
@@ -848,17 +890,17 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent)
 		PostRecalcJulia();
 		break;
 
-	case IDM_ITERATIONS_JULIA_8192: 
+	case IDM_ITERATIONS_JULIA_8192:
 		put_MaxIterationsJulia(8192);
 		PostRecalcJulia();
 		break;
 
-	case IDM_ITERATIONS_JULIA_16384: 
+	case IDM_ITERATIONS_JULIA_16384:
 		put_MaxIterationsJulia(16384);
 		PostRecalcJulia();
 		break;
 
-	case IDM_ITERATIONS_JULIA_32767: 
+	case IDM_ITERATIONS_JULIA_32767:
 		put_MaxIterationsJulia(32768);
 		PostRecalcJulia();
 		break;
@@ -876,7 +918,7 @@ void CJuliasmApp::PostRecalcMand(void)
 }
 void CJuliasmApp::PostRecalcJulia(void)
 {
-	PostMessage(get_hWnd(), WM_COMMAND, IDM_RECALCULATE_JULIA , 0);
+	PostMessage(get_hWnd(), WM_COMMAND, IDM_RECALCULATE_JULIA, 0);
 }
 void CJuliasmApp::PostRecalcAll(void)
 {
@@ -887,34 +929,36 @@ void CJuliasmApp::PostRecalcAll(void)
 //
 // handle keydown messages - not currently needed
 //
-bool CJuliasmApp::handle_keydown(HWND hWnd, int iVKey) 
-{ 
-	return false; 
+bool CJuliasmApp::handle_keydown(HWND hWnd, int iVKey)
+{
+	return false;
 }
 
 //
 // handle characters presses.  not currently needed
 //
-bool CJuliasmApp::handle_char(HWND hWnd, int iChar) 
-{ 
-	return false; 
+bool CJuliasmApp::handle_char(HWND hWnd, int iChar)
+{
+	return false;
 }
 
 //
 // handle vertical scroll messages.  not currently needed
 //
-bool CJuliasmApp::handle_vscroll(HWND hWnd, int iScrollRequest, int iScrollPosition) 
-{ 
-	return false; 
+bool CJuliasmApp::handle_vscroll(HWND hWnd, int iScrollRequest, int iScrollPosition)
+{
+	return false;
 }
 
 //
 // handle window resizing
 //
-bool CJuliasmApp::handle_size(HWND hWnd, HDC hdc, int iSizeType, int iWidth, int iHeight) 
-{ 
+//char szBuf[100];
+
+bool CJuliasmApp::handle_size(HWND hWnd, HDC hdc, int iSizeType, int iWidth, int iHeight)
+{
 	// only respond to messages if the right type of resize messages are sent
-	if (iSizeType == SIZE_MAXIMIZED || iSizeType == SIZE_MAXSHOW || iSizeType == SIZE_RESTORED)
+	if ((iSizeType == SIZE_MAXIMIZED) || (iSizeType == SIZE_MAXSHOW) || (iSizeType == SIZE_RESTORED))
 	{
 		// make sure the image with is a multiple of POINTS_CONCURRENT_MAX 
 		m_iMandHeight = m_iMandWidth = (iWidth / MANDELBROT_SCREEN_FRACTION) - (iWidth / MANDELBROT_SCREEN_FRACTION % POINTS_CONCURRENT_MAX);
@@ -924,8 +968,33 @@ bool CJuliasmApp::handle_size(HWND hWnd, HDC hdc, int iSizeType, int iWidth, int
 		// RAP: consider adding logic to make sure pixels are square. the delta should be the smaller of da and db
 
 		// resize the bitmap images
-		m_bmpMandelbrot.Resize(hWnd, m_iMandWidth, m_iMandHeight);
-		m_bmpJulia.Resize(hWnd, m_iJuliaWidth, m_iJuliaHeight);
+		char szBuf[102];
+//		char szBuf[1];
+		memset(szBuf, 0, sizeof(szBuf));
+		if (false == m_bmpMandelbrot.Resize(hWnd, m_iMandWidth, m_iMandHeight))
+		{
+			sprintf_s(szBuf, _countof(szBuf), "Unable to create Mandelbrot bitmap. (w=%d, h=%d)", m_iMandWidth, m_iMandHeight);
+			MessageBox(m_hWnd, szBuf, "Error", MB_ICONSTOP | MB_OK);
+			exit(0);
+		}
+		if (false == m_bmpJulia.Resize(hWnd, m_iJuliaWidth, m_iJuliaHeight))
+		{
+			sprintf_s(szBuf, _countof(szBuf), "Unable to create Julia bitmap. (w=%d, h=%d)", m_iJuliaWidth, m_iJuliaHeight);
+			MessageBox(m_hWnd, "Unable to create Julia set bitmap.", "Error", MB_ICONSTOP | MB_OK);
+			exit(0);
+		}
+		if (szBuf[0] != 0 || szBuf[_countof(szBuf)-1] != 0)
+		{
+			MessageBox(m_hWnd, "Memory corruption.", "Error", MB_ICONSTOP | MB_OK);
+		}
+
+		m_OCLMand.put_ImageSize(m_iMandWidth, m_iMandHeight);
+		m_OCLMand.put_Bitmap(this->m_bmpMandelbrot.get_bmpBits());
+		m_OCLMand.put_Boundary((float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
+
+		m_OCLJulia.put_ImageSize(m_iJuliaWidth, m_iJuliaHeight);
+		m_OCLJulia.put_Bitmap(this->m_bmpJulia.get_bmpBits());
+		//RAP we still need to set the Julia boundary somewhere		m_OCLJulia.put_Boundary((float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
 
 		// redraw the images
 		PostMessage(hWnd, WM_COMMAND, IDM_RECALCULATE_MAND, 0);
@@ -942,7 +1011,6 @@ bool CJuliasmApp::RecalculateJulia(void)
 	// only recalculate if there is not an ongoing calculation
 	if (m_iCalculatingJulia != 0)
 	{
-		MessageBeep(-1);
 		return false;
 	}
 
@@ -1020,6 +1088,102 @@ bool CJuliasmApp::RecalculateJulia(void)
 		}
 
 	}
+	else if (m_CalcPlatformJulia == CalcPlatform::OpenCL_CPU)
+	{
+		if (get_CalcPlatformJulia() != CalcPlatform::OpenCL_CPU)
+		{
+			put_CalcPlatformJulia(CalcPlatform::OpenCL_CPU);
+		}
+		if (m_OCLJulia.get_CurrentDeviceType() != CL_DEVICE_TYPE_CPU)
+		{
+			//
+			// reset the OpenCL environment
+			//
+			if (m_OCLJulia.get_CurrentDeviceType() != CL_DEVICE_TYPE_CPU)
+			{
+				HCURSOR hCursor = LoadCursor(NULL, IDC_WAIT);
+				HCURSOR hOldCursor = SetCursor(hCursor);
+				m_OCLJulia.UseDeviceByType(CL_DEVICE_TYPE_CPU);
+				m_OCLJulia.PrepareProgram();
+				m_OCLJulia.put_ImageSize(m_iJuliaWidth, m_iJuliaHeight);
+				hCursor = SetCursor(hOldCursor);
+			}
+		}
+
+		// save the calculation platform
+		m_szMethod = "OpenCL CPU";
+
+		// setup the performance counters
+		// record the proess start time
+		QueryPerformanceCounter(&m_tJuliaProcessStart);
+
+		// setup performance measurement
+		m_tJuliaProcessStop.QuadPart = 0;
+		m_tJuliaProcessDurationTotal.QuadPart = 0;
+		m_tJuliaThreadDurationTotal.QuadPart = 0;
+		SecureZeroMemory(&m_tJuliaThreadDuration, sizeof(m_tJuliaThreadDuration));
+
+
+		// start the threads
+		cl_int error;
+		m_iCalculatingJulia = 1;
+		if (false == m_OCLJulia.ExecuteProgram(1, &error))
+		{
+			char szBuf[64];
+			sprintf_s(szBuf, _countof(szBuf), "Error %d executing OpenCL kernel.", error);
+			MessageBox(NULL, szBuf, "Error", MB_ICONEXCLAMATION);
+		}
+
+		// tell the application that the thread is complete
+		PostMessage(get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETEJULIA_OPENCL, 0);
+	}
+	else if (m_CalcPlatformJulia == CalcPlatform::OpenCL_GPU)
+	{
+		if (get_CalcPlatformJulia() != CalcPlatform::OpenCL_GPU)
+		{
+			put_CalcPlatformJulia(CalcPlatform::OpenCL_GPU);
+		}
+
+		//
+		// reset the OpenCL environment
+		//
+		if (m_OCLJulia.get_CurrentDeviceType() != CL_DEVICE_TYPE_GPU)
+		{
+			HCURSOR hCursor = LoadCursor(NULL, IDC_WAIT);
+			HCURSOR hOldCursor = SetCursor(hCursor);
+			m_OCLJulia.UseDeviceByType(CL_DEVICE_TYPE_GPU);
+			m_OCLJulia.PrepareProgram();
+			m_OCLJulia.put_ImageSize(m_iJuliaWidth, m_iJuliaHeight);
+			hCursor = SetCursor(hOldCursor);
+		}
+
+		// save the calculation platform
+		m_szMethod = "OpenCL GPU";
+
+		// setup the performance counters
+		// record the proess start time
+		QueryPerformanceCounter(&m_tJuliaProcessStart);
+
+		// setup performance measurement
+		m_tJuliaProcessStop.QuadPart = 0;
+		m_tJuliaProcessDurationTotal.QuadPart = 0;
+		m_tJuliaThreadDurationTotal.QuadPart = 0;
+		SecureZeroMemory(&m_tJuliaThreadDuration, sizeof(m_tJuliaThreadDuration));
+
+		// start the threads
+		cl_int error;
+		m_iCalculatingJulia = 1;
+		if (false == m_OCLJulia.ExecuteProgram(1, &error))
+		{
+			char szBuf[64];
+			sprintf_s(szBuf, _countof(szBuf), "Error %d executing OpenCL kernel.", error);
+			MessageBox(NULL, szBuf, "Error", MB_ICONEXCLAMATION);
+		}
+
+		// tell the application that the thread is complete
+		PostMessage(get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETEJULIA_OPENCL, 0);
+
+	}
 	else
 	{
 		// save the platform type
@@ -1042,11 +1206,62 @@ bool CJuliasmApp::RecalculateJulia(void)
 //
 // handlemounse moves
 //
-bool CJuliasmApp::handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y) 
-{ 
+
+bool CJuliasmApp::handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y)
+{
 	// don't respond to mouse moves if the image is currently recalculating
 	if (m_iCalculatingJulia || m_iCalculatingMandelbrot)
+	{
 		return false;
+	}
+
+	//
+	// handle a mouse capture
+	//
+	if (wParam & MK_LBUTTON)
+	{
+		// initiate a mouse capture
+		if (m_bDragging == false)
+		{
+			m_bDragging = true;
+			SetCapture(hWnd);
+			m_iDragStartX = x;
+			m_iDragStartY = y;
+			m_start_a1 = m_a1;
+			m_start_b1 = m_b1;
+			m_start_a2 = m_a2;
+			m_start_b2 = m_b2;
+		}
+		m_iDragCurrentX = x;
+		m_iDragCurrentY = y;
+		m_iDragEndX = x;
+		m_iDragEndY = y;
+
+		//
+		// redraw the mandelbrot panel based on the new drag location
+		//
+
+		// determine the number of pixels moved
+		int dx = (m_iDragCurrentX - m_iDragStartX);
+		int dy = (m_iDragCurrentY - m_iDragStartY);
+
+		// convert that into a numeric offset
+		double offset_a = (m_start_a2 - m_start_a1) / m_iMandWidth * dx;
+		double offset_b = (m_start_b2 - m_start_b1) / m_iMandHeight * dy;
+
+		// update the drawing variables
+		m_a1 = m_start_a1 - offset_a;
+		m_a2 = m_start_a2 - offset_a;
+		m_b1 = m_start_b1 - offset_b;
+		m_b2 = m_start_b2 - offset_b;
+
+		m_OCLMand.put_Boundary((float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
+
+		CalculateMandelbrot();
+		InvalidateRect(hWnd, NULL, FALSE);
+		UpdateWindow(hWnd);
+		return true;
+	}
 
 	// make sure the correct number of threads is being used
 	m_iJuliaThreadCount = MAX_JULIA_THREADS;
@@ -1058,7 +1273,88 @@ bool CJuliasmApp::handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y)
 	m_ja_sse = (float)(m_a1 + (m_a2 - m_a1) / m_iMandWidth * x);
 	m_jb_sse = (float)(m_b1 + (m_b2 - m_b1) / m_iMandHeight * y);
 
+	m_OCLJulia.put_ConstPoint(m_ja_sse, m_jb_sse);
+
 	return RecalculateJulia();
+}
+
+void CJuliasmApp::ZoomInMand(int x, int y)
+{
+	// default x and y, if needed
+	if (x < 0)
+	{
+		x = m_iMandWidth / 2;
+	}
+	if (y < 0)
+	{
+		y = m_iMandHeight / 2;
+	}
+
+	double height, width, da, db, anew, bnew;
+
+	// only proceed if there are no mandelbrot calculations in the works
+	if (m_iCalculatingMandelbrot == 0)
+	{
+		// adjust the y value for the top of the mandelbrot image
+		y = y - JULIA_TOP;
+
+		da = (m_a2 - m_a1) / m_iMandWidth;
+		db = (m_b2 - m_b1) / m_iMandHeight;
+		width = m_a2 - m_a1;
+		height = m_b2 - m_b1;
+		anew = m_a1 + da * x;
+		bnew = m_b1 + db * y;
+
+		width = width * 0.8;
+		height = height * 0.8;
+		m_a1 = anew - (width / 2.0);
+		m_a2 = m_a1 + width;
+
+		m_b1 = bnew - (height / 2.0);
+		m_b2 = m_b1 + height;
+
+		// share the new bounding box with the OpenCL object
+		m_OCLMand.put_Boundary((float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
+
+		// recalculate the image
+		CalculateMandelbrot();
+	}
+}
+
+void CJuliasmApp::ZoomOutMand(void)
+{
+	double height, width, da, db, anew, bnew;
+
+	int x = m_iMandWidth / 2;
+	int y = m_iMandHeight / 2;
+
+	// only proceed if there are no mandelbrot calculations in the works
+	if (m_iCalculatingMandelbrot == 0)
+	{
+		// adjust the y value for the top of the mandelbrot image
+		y = y - JULIA_TOP;
+
+		da = (m_a2 - m_a1) / m_iMandWidth;
+		db = (m_b2 - m_b1) / m_iMandHeight;
+		width = m_a2 - m_a1;
+		height = m_b2 - m_b1;
+		anew = m_a1 + da * x;
+		bnew = m_b1 + db * y;
+
+		width = width / 0.8;
+		height = height / 0.8;
+		m_a1 = anew - (width / 2.0);
+		m_a2 = m_a1 + width;
+
+		m_b1 = bnew - (height / 2.0);
+		m_b2 = m_b1 + height;
+
+		// share the new bounding box with the OpenCL object
+		m_OCLMand.put_Boundary((float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
+
+		// recalculate the image
+		CalculateMandelbrot();
+	}
 }
 
 //
@@ -1068,11 +1364,25 @@ bool CJuliasmApp::handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y)
 //
 bool CJuliasmApp::handle_mousewheel(HWND hWnd, WORD wvKeys, int iRotationAmount, int x, int y)
 {
-	double height, width, da, db, anew, bnew;
-
-	// only handle the message if the mandelbrot set is not currently being calculated
-	if (m_iCalculatingMandelbrot == 0)
+	iRotationAmount = iRotationAmount / WHEEL_DELTA;
+	if (iRotationAmount > 0)
 	{
+		ZoomInMand();
+		return true;
+	}
+	else
+	{
+		ZoomOutMand();
+		return true;
+	}
+
+	//	return handle_lbuttondoubleclick(hWnd, 0, m_iMandWidth / 2, m_iMandHeight / 2);
+	/*
+		double height, width, da, db, anew, bnew;
+
+		// only handle the message if the mandelbrot set is not currently being calculated
+		if (m_iCalculatingMandelbrot == 0)
+		{
 		// determine how far the wheel has rotated
 		iRotationAmount = iRotationAmount / WHEEL_DELTA;
 
@@ -1090,13 +1400,13 @@ bool CJuliasmApp::handle_mousewheel(HWND hWnd, WORD wvKeys, int iRotationAmount,
 		// zoom into (or out of) the image
 		if (iRotationAmount < 0)
 		{
-			width = width * 1.1;
-			height = height * 1.1;
+		width = width * 1.1;
+		height = height * 1.1;
 		}
 		else
 		{
-			width = width * 0.95;
-			height = height * 0.95;
+		width = width * 0.95;
+		height = height * 0.95;
 		}
 		m_a1 = anew - (width / 2.0);
 		m_a2 = m_a1 + width;
@@ -1106,9 +1416,31 @@ bool CJuliasmApp::handle_mousewheel(HWND hWnd, WORD wvKeys, int iRotationAmount,
 
 		// request a redraw with the new parameters
 		PostMessage(hWnd, WM_COMMAND, IDM_RECALCULATE_MAND, 0);
+		}
+		return true;
+		*/
+}
+
+bool CJuliasmApp::handle_lbuttondown(HWND hWnd, WORD wvKeys, int x, int y)
+{
+	m_iDragStartX = x;
+	m_iDragStartY = y;
+	return true;
+}
+bool CJuliasmApp::handle_lbuttonup(HWND hWnd, WORD	wvKeys, int x, int y)
+{
+	if (m_bDragging)
+	{
+		m_iDragEndX = x;
+		m_iDragEndY = y;
+		m_bDragging = false;
+		ReleaseCapture();
+		InvalidateRect(hWnd, NULL, FALSE);
+		UpdateWindow(hWnd);
 	}
 	return true;
 }
+
 
 //
 // Calculates the mandelbrot image based on the current calculation platform
@@ -1141,6 +1473,14 @@ void CJuliasmApp::CalculateMandelbrot(void)
 	case FMA:
 		StartMandelbrotAVX2(get_hWnd());
 		break;
+
+	case OpenCL_CPU:
+		StartMandelbrotOpenCL_CPU(get_hWnd());
+		break;
+
+	case OpenCL_GPU:
+		StartMandelbrotOpenCL_GPU(get_hWnd());
+		break;
 	}
 }
 
@@ -1161,11 +1501,13 @@ void CJuliasmApp::UpdateCalcPlatformMenuMand(void)
 	case AVX32:	iMenuItem = IDM_CALCULATE_MAND_AVX32; break;
 	case AVX64:	iMenuItem = IDM_CALCULATE_MAND_AVX64; break;
 	case FMA:	iMenuItem = IDM_CALCULATE_MAND_FMA; break;
+	case OpenCL_CPU:	iMenuItem = IDM_CALCULATE_MAND_OPENCL_CPU; break;
+	case OpenCL_GPU:	iMenuItem = IDM_CALCULATE_MAND_OPENCL_GPU; break;
 	default:	iMenuItem = 0; break;
 	}
 
 	// uncheck all of the platform menu items
-	CheckMenuRadioItem(GetMenu(get_hWnd()), IDM_CALCULATE_MAND_X87, IDM_CALCULATE_MAND_FMA, iMenuItem, MF_BYCOMMAND);
+	CheckMenuRadioItem(GetMenu(get_hWnd()), IDM_CALCULATE_MAND_MIN, IDM_CALCULATE_MAND_MAX, iMenuItem, MF_BYCOMMAND);
 
 }
 //
@@ -1183,6 +1525,8 @@ void CJuliasmApp::UpdateCalcPlatformMenuJulia(void)
 	case AVX32:	iMenuItem = IDM_CALCULATE_JULIA_AVX32; break;
 	case AVX64:	iMenuItem = IDM_CALCULATE_JULIA_AVX64; break;
 	case FMA:	iMenuItem = IDM_CALCULATE_JULIA_FMA; break;
+	case OpenCL_CPU:	iMenuItem = IDM_CALCULATE_JULIA_OPENCL_CPU; break;
+	case OpenCL_GPU:	iMenuItem = IDM_CALCULATE_JULIA_OPENCL_GPU; break;
 	default:	iMenuItem = 0; break;
 	}
 
@@ -1191,9 +1535,9 @@ void CJuliasmApp::UpdateCalcPlatformMenuJulia(void)
 	HMENU hMenu = GetMenu(get_hWnd());
 	if (hMenu != NULL)
 	{
-		if (0 == CheckMenuRadioItem(hMenu, IDM_CALCULATE_JULIA_X87, IDM_CALCULATE_JULIA_FMA, iMenuItem, MF_BYCOMMAND))
+		if (0 == CheckMenuRadioItem(hMenu, IDM_CALCULATE_JULIA_MIN, IDM_CALCULATE_JULIA_MAX, iMenuItem, MF_BYCOMMAND))
 		{
-			iError = GetLastError();		
+			iError = GetLastError();
 		}
 	}
 
@@ -1219,6 +1563,7 @@ void CJuliasmApp::put_MaxIterationsMand(int iMaxIterationsMand)
 	}
 
 	m_iMaxIterationsMand = iMaxIterationsMand;
+	m_OCLMand.put_MaxIterations(m_iMaxIterationsMand);
 
 	// uncheck all of the platform menu items
 	CheckMenuRadioItem(GetMenu(get_hWnd()), IDM_ITERATIONS_MAND_64, IDM_ITERATIONS_MAND_32767, iMenuItem, MF_BYCOMMAND);
@@ -1243,6 +1588,7 @@ void CJuliasmApp::put_MaxIterationsJulia(int iMaxIterationsJulia)
 	}
 
 	m_iMaxIterationsJulia = iMaxIterationsJulia;
+	m_OCLJulia.put_MaxIterations(m_iMaxIterationsJulia);
 
 	// uncheck all of the platform menu items
 	CheckMenuRadioItem(GetMenu(get_hWnd()), IDM_ITERATIONS_JULIA_64, IDM_ITERATIONS_JULIA_32767, iMenuItem, MF_BYCOMMAND);
@@ -1261,6 +1607,8 @@ char *CJuliasmApp::get_CalcPlatformName(char *szBuf, size_t iLen, CalcPlatform c
 	case AVX32: ptr = "AVX 32-bit"; break;
 	case AVX64: ptr = "AVX 64-bit"; break;
 	case FMA: ptr = "AVX2"; break;
+	case OpenCL_CPU: ptr = "OpenCL CPU"; break;
+	case OpenCL_GPU: ptr = "OpenCL GPU"; break;
 	default: ptr = "Undefined"; break;
 	}
 	strcpy_s(szBuf, iLen, ptr);

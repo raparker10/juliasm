@@ -30,7 +30,7 @@ public:
 	}
 	inline int Show(HDC hdcDest, int iDestX, int iDestY, int iDestWidth, int iDestHeight, int iSourceX, int iSourceY, int iSourceWidth, int iSourceHeight, DWORD dwROP)
 	{
-		return StretchDIBits(
+		int iLinesDisplayed = StretchDIBits(
 			hdcDest,
 			iDestX, iDestY, iDestWidth, iDestHeight,
 			iSourceX, iSourceY, iSourceWidth, iSourceHeight,
@@ -38,6 +38,7 @@ public:
 			&m_bmi,
 			DIB_RGB_COLORS,
 			dwROP);
+		return iLinesDisplayed;
 	}
 	inline int Show(HDC hdcDest, int iDestX, int iDestY)
 	{

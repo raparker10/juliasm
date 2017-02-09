@@ -39,6 +39,17 @@ LRESULT CALLBACK CApplication::MessageProc(HWND hWnd, UINT message, WPARAM wPara
 
 	case WM_MOUSEMOVE:
 		pApp->handle_mousemove(hWnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		break;
+
+	case WM_LBUTTONDOWN:
+		if (false == pApp->handle_lbuttondown(hWnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)))
+			break;
+		return 0;
+
+	case WM_LBUTTONUP:
+		if (false == pApp->handle_lbuttonup(hWnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)))
+			break;
+		return 0;
 
 	case WM_COMMAND:
 		if (false == pApp->handle_command(hWnd, LOWORD(wParam), HIWORD(wParam)))

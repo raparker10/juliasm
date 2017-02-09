@@ -29,4 +29,6 @@ public:
 	virtual bool handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y) { return false; }
 	virtual bool handle_lbuttondoubleclick(HWND hWnd, WPARAM wvKeyDown, WORD x, WORD y) { return false; }
 	virtual bool handle_mousewheel(HWND hWnd, WORD wvKeys, int iRotationAmount, int x, int y) { return false; }
+	virtual bool handle_lbuttondown(HWND hWnd, WORD wvKeys, int x, int y) { return true; }
+	virtual bool handle_lbuttonup(HWND hWnd, WORD	wvKeys, int x, int y) { return true; }	
 };

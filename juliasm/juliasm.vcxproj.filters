@@ -42,6 +42,9 @@
     <ClCompile Include="CJuliasmApp_Julia.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="COpenCL.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CPalette.h">
@@ -74,6 +77,9 @@
     <ClInclude Include="cpu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="COpenCL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="juliasm.ico">
@@ -90,5 +96,10 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\fractals.cl">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

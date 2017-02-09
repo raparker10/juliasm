@@ -58,7 +58,7 @@ bool CBitmap256Color::Resize(HWND hWnd, int iWidth, int iHeight, bool bCopyOrigi
 	if (iWidth == m_iWidth && iHeight == m_iHeight)
 		return true;
 
-	if (CreateDIBitmap(hWnd, iWidth, iHeight, &bmi, &hbmpCanvas, &ppvBits))
+	if (NULL != CreateDIBitmap(hWnd, iWidth, iHeight, &bmi, &hbmpCanvas, &ppvBits))
 	{
 		// copy the locatl values into the member values
 		memcpy(&m_bmi, &bmi, sizeof(bmi));
@@ -68,9 +68,7 @@ bool CBitmap256Color::Resize(HWND hWnd, int iWidth, int iHeight, bool bCopyOrigi
 		m_iWidth = iWidth;
 
 		// clear the screen to WHITE by default
-		Erase(RGB(255, 255, 255));
-
-		return true;
+		return Erase(RGB(255, 255, 255));
 	}
 
 	return false;
