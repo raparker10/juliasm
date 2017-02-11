@@ -1,7 +1,5 @@
 #include "stdafx.h"
 
-HWND CApplication::m_hWnd;
-
 
 // constructor
 CApplication::CApplication()
@@ -28,10 +26,11 @@ LRESULT CALLBACK CApplication::MessageProc(HWND hWnd, UINT message, WPARAM wPara
 	switch (message)
 	{
 	case WM_CREATE:
-		CApplication::m_hWnd = hWnd;
+//		CApplication::m_hWnd = hWnd;
 		lpcs = (LPCREATESTRUCT)lParam;
 		pApp = (CApplication*)(lpcs->lpCreateParams);
 		pApp->handle_create(hWnd, (LPCREATESTRUCT*)lParam);
+		pApp->m_hWnd = hWnd;
 		break;
 
 	case WM_ERASEBKGND:
@@ -46,13 +45,23 @@ LRESULT CALLBACK CApplication::MessageProc(HWND hWnd, UINT message, WPARAM wPara
 			break;
 		return 0;
 
+	case WM_RBUTTONDOWN:
+		if (false == pApp->handle_rbuttondown(hWnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)))
+			break;
+		return 0;
+
+	case WM_RBUTTONUP:
+		if (false == pApp->handle_rbuttonup(hWnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)))
+			break;
+		return 0;
+
 	case WM_LBUTTONUP:
 		if (false == pApp->handle_lbuttonup(hWnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)))
 			break;
 		return 0;
 
 	case WM_COMMAND:
-		if (false == pApp->handle_command(hWnd, LOWORD(wParam), HIWORD(wParam)))
+		if (false == pApp->handle_command(hWnd, LOWORD(wParam), HIWORD(wParam), lParam))
 			return DefWindowProc(hWnd, message, wParam, lParam);
 		break;
 

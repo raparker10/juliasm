@@ -42,6 +42,13 @@ BEGIN
     BEGIN
         MENUITEM "E&xit",                IDM_EXIT
     END
+    POPUP "&View"
+	BEGIN
+		MENUITEM "Mandelbrot Only"					IDM_VIEW_MAND_ONLY
+		MENUITEM "Small Mandelbrot Large Julia"		IDM_VIEW_SMMAND_LGJULIA
+		MENUITEM "Large Mandelbrot Small Julia"		IDM_VIEW_LGMAND_SMJULIA
+		MENUITEM "Julia Only"						IDM_VIEW_JULIA_ONLY
+	END
     POPUP "&Mandelbrot"
 	BEGIN
 		MENUITEM "Recalculate"				IDM_RECALCULATE_MAND
@@ -96,7 +103,9 @@ BEGIN
 	END
 	POPUP "&Help"
     BEGIN
-        MENUITEM "&About ...",           IDM_ABOUT
+        MENUITEM "&CPU ...",        IDM_HELP_CPU
+        MENUITEM "&Open CL ...",	IDM_HELP_GPU
+        MENUITEM "&About ...",      IDM_ABOUT
     END
 END
 
@@ -128,6 +137,58 @@ BEGIN
     LTEXT           "Copyright (C) 2009",IDC_STATIC,42,26,114,8
     DEFPUSHBUTTON   "OK",IDOK,113,41,50,14,WS_GROUP
 END
+
+IDD_CPUBOX DIALOGEX 0, 0, 170, 220
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "CPU Capabilities"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,14,14,21,20
+    LTEXT           "CPU Vendor ID",		IDC_STATIC, 010, 005, 075, 8,	SS_NOPREFIX
+    LTEXT           "Family-Model-Stepping",IDC_STATIC, 010, 015, 075, 8,	SS_NOPREFIX
+    LTEXT           "Microarchitecture",	IDC_STATIC, 010, 025, 075, 8,	SS_NOPREFIX
+
+    LTEXT           "CPU Vendor ID",		IDC_CPU_VENDOR,				085, 005, 075, 8,		SS_NOPREFIX
+    LTEXT           "Family/Model/Stepping",IDC_CPU_FAMILY,				085, 015, 075, 8,		SS_NOPREFIX
+    LTEXT           "Microarchitecture",	IDC_CPU_MICROARCHITECTURE,	085, 025, 075, 8,		SS_NOPREFIX
+
+
+
+
+	LTEXT           "x87",		IDC_STATIC, 020, 040, 050,  8,	SS_NOPREFIX
+	LTEXT           "MMX",		IDC_STATIC, 020, 050, 050,  8,	SS_NOPREFIX
+	LTEXT           "SSE",		IDC_STATIC, 020, 060, 050,  8,	SS_NOPREFIX
+	LTEXT           "SSE2",		IDC_STATIC, 020, 070, 050,  8,	SS_NOPREFIX
+	LTEXT           "SSSE3",	IDC_STATIC, 020, 080, 050,  8,	SS_NOPREFIX
+	LTEXT           "SSE 4.1",	IDC_STATIC, 020, 090, 050,  8,	SS_NOPREFIX
+	LTEXT           "SSE 4.2",	IDC_STATIC, 020, 100, 050,  8,	SS_NOPREFIX
+	LTEXT           "AVX",		IDC_STATIC, 020, 110, 050,  8,	SS_NOPREFIX
+	LTEXT           "AVX2",		IDC_STATIC, 020, 120, 050,  8,	SS_NOPREFIX
+	LTEXT           "AVX 512",	IDC_STATIC, 020, 130, 050,  8,	SS_NOPREFIX
+	LTEXT           "CLMUL",	IDC_STATIC, 020, 140, 050,  8,	SS_NOPREFIX
+	LTEXT           "FMA3",		IDC_STATIC, 020, 150, 050,  8,	SS_NOPREFIX
+	LTEXT           "ADX",		IDC_STATIC, 020, 160, 050,  8,	SS_NOPREFIX
+	LTEXT           "SHA",		IDC_STATIC, 020, 170, 050,  8,	SS_NOPREFIX
+
+	LTEXT           "x87",		IDC_HAS_x87,	010, 040, 010,  8,	SS_NOPREFIX
+	LTEXT           "MMX",		IDC_HAS_MMX,	010, 050, 010,  8,	SS_NOPREFIX
+	LTEXT           "SSE",		IDC_HAS_SSE,	010, 060, 010,  8,	SS_NOPREFIX
+	LTEXT           "SSE2",		IDC_HAS_SSE2,	010, 070, 010,  8,	SS_NOPREFIX
+	LTEXT           "SSSE3",	IDC_HAS_SSSE3,	010, 080, 010,  8,	SS_NOPREFIX
+	LTEXT           "SSE 4.1",	IDC_HAS_SSE41,	010, 090, 010,  8,	SS_NOPREFIX
+	LTEXT           "SSE 4.2",	IDC_HAS_SSE42,	010, 100, 010,  8,	SS_NOPREFIX
+	LTEXT           "AVX",		IDC_HAS_AVX,	010, 110, 010,  8,	SS_NOPREFIX
+	LTEXT           "AVX2",		IDC_HAS_AVX2,	010, 120, 010,  8,	SS_NOPREFIX
+	LTEXT           "AVX 512",	IDC_HAS_AVX512,	010, 130, 010,  8,	SS_NOPREFIX
+	LTEXT           "CLMUL",	IDC_HAS_CLMUL,	010, 140, 010,  8,	SS_NOPREFIX
+	LTEXT           "FMA3",		IDC_HAS_FMA3,	010, 150, 010,  8,	SS_NOPREFIX
+	LTEXT           "ADX",		IDC_HAS_ADX,	010, 160, 010,  8,	SS_NOPREFIX
+	LTEXT           "SHA",		IDC_HAS_SHA,	010, 170, 010,  8,	SS_NOPREFIX
+
+	
+	DEFPUSHBUTTON   "OK",		IDOK,		113, 200, 050, 14,  WS_GROUP
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //

@@ -22,6 +22,7 @@
 #include <math.h>
 #include <Windowsx.h>
 #include <CL\cl.h>
+#include <assert.h>
 
 #include "CPalette.h"
 #include "COpenCL.h"

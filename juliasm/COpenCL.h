@@ -61,6 +61,35 @@ protected:
 
 	cl_command_queue m_CommandQueue;	// command queue for the current program
 
+	//
+	// build error message information
+	//
+	cl_int m_iLastBuildStatus;
+	char *m_pszLastBuildMessage;
+	bool put_LastBuildMessage(char *szBuildMessage)
+	{
+		// check for erroneous input
+		assert(szBuildMessage != NULL);
+
+		// free any current error message
+		if (m_pszLastBuildMessage != NULL)
+		{
+			free(m_pszLastBuildMessage);
+			m_pszLastBuildMessage = NULL;
+		}
+		
+		// return error if the input message is NULL
+		if (szBuildMessage == NULL)
+			return false;
+
+		// return true if the input message is empty
+		if (lstrlen(szBuildMessage) == 0)
+			return true;
+
+		m_pszLastBuildMessage = _strdup(szBuildMessage);
+		assert(m_pszLastBuildMessage != NULL);
+		return m_pszLastBuildMessage != NULL;
+	}
 
 	bool Initialize(void);	// initializes the OpenCL program
 	int BuildPlatformList(void);				// gets the platform list
@@ -202,6 +231,31 @@ public:
 	bool CleanupProgram(void);			// cleanup the current OpoenCL program environment
 	virtual bool CleanupProgramBuffers(void);	// delete OpenCL buffers
 	bool ExecuteProgram(int iKernel, cl_int *pError);	// execute the current OpenCL pprogram
+
+	//
+	// error message functions
+	//
+	inline const char * get_LastBuildMessage(void) {
+		return m_pszLastBuildMessage;
+	}
+	inline bool get_LastBuildMessage(char *szMessageBuffer, size_t iBufSize) {
+		// check for erroneous input
+		assert(szMessageBuffer != NULL);
+		assert(iBufSize > 0);
+		
+		if (szMessageBuffer == NULL || iBufSize <= 0)
+			return false;
+
+		// initialize the buffer
+		szMessageBuffer[0] = 0;
+		if (m_pszLastBuildMessage != NULL)
+			strcpy_s(szMessageBuffer, iBufSize, m_pszLastBuildMessage);
+
+		return true;
+	}
+	inline cl_int get_LastBuildStatus(void) const { 
+		return m_iLastBuildStatus; 
+	}
 };
 
 class COpenCLImage : public COpenCL
@@ -226,9 +280,10 @@ public:
 	COpenCLImage();
 	~COpenCLImage() {}
 	// indicate where to place the Mandelbrot set image
-	void put_Bitmap(LPVOID lpvBitmap) 
+	bool put_Bitmap(LPVOID lpvBitmap) 
 	{
 		m_BitmapBits = (unsigned char*)lpvBitmap;
+		return true;
 	}
 
 	// changes the mandelbrot bitmap image size

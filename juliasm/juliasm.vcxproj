@@ -58,12 +58,13 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <AssemblerOutput>NoListing</AssemblerOutput>
       <AdditionalIncludeDirectories>$(INTELOCLSDKROOT)\include;$(INTELOCLSDKROOT)\include\CL;</AdditionalIncludeDirectories>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -77,6 +78,7 @@
     <ClCompile Include="CApplication.cpp" />
     <ClCompile Include="CBitmap.cpp" />
     <ClCompile Include="CJuliasmApp.cpp" />
+    <ClCompile Include="CJuliasmApp_Dialog.cpp" />
     <ClCompile Include="CJuliasmApp_Mand.cpp" />
     <ClCompile Include="CJuliasmApp_Julia.cpp">
       <AssemblerOutput Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AssemblyAndSourceCode</AssemblerOutput>

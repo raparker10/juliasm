@@ -12,7 +12,7 @@
 //
 // implements Z(n+1)=Z(n)^2+C where...
 //		Z is the current pixel location, represented by the variables 'c', and 'd'
-//		C is the constant that represents a specific Julia set and does not vary and is contained in 'a', and 'b'  (m_ja_sse, and m_jb_sse in CJuliasmApp)
+//		C is the constant that represents a specific Julia set and does not vary and is contained in 'a', and 'b'  (m_ja, and m_jb in CJuliasmApp)
 //
 DWORD WINAPI CJuliasmApp::CalculateJuliaX87(void* pArguments)
 {
@@ -27,24 +27,24 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaX87(void* pArguments)
 	QueryPerformanceCounter(&tStart);
 
 	// determine how much of the image this thread will calculate
-	double fThreadHeight = (pApp->m_jc2_sse - pApp->m_jc1_sse) / pApp->m_iJuliaThreadCount;
+	double fThreadHeight = (pApp->m_jc2 - pApp->m_jc1) / pApp->m_iCalcThreadCount[FractalType::Julia];
 
 	double
-		a = pApp->m_ja_sse,
-		b = pApp->m_jb_sse,
-		start_c = pApp->m_jc1_sse,
-		start_d = pApp->m_jd1_sse + fThreadHeight * iThreadIndex,
-		dc = (pApp->m_jc2_sse - pApp->m_jc1_sse) /pApp->m_iJuliaWidth,
-		dd = (pApp->m_jd2_sse - pApp->m_jd1_sse) /pApp->m_iJuliaHeight;
+		a = pApp->m_ja,
+		b = pApp->m_jb,
+		start_c = pApp->m_jc1,
+		start_d = pApp->m_jd1 + fThreadHeight * iThreadIndex,
+		dc = (pApp->m_jc2 - pApp->m_jc1) /pApp->get_JuliaWidth(),
+		dd = (pApp->m_jd2 - pApp->m_jd1) /pApp->get_JuliaHeight();
 
 	// get the bitmap bits
-	unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpJulia.get_bmpBits();
+	unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpFractal[FractalType::Julia].get_bmpBits();
 
-	int pixelHeight = pApp->m_iJuliaHeight / pApp->m_iJuliaThreadCount;
+	int pixelHeight = pApp->get_JuliaHeight() / pApp->m_iCalcThreadCount[FractalType::Julia];
 	int starty = iThreadIndex * pixelHeight;
 	int endy = starty + pixelHeight;
 
-	unsigned int iIndex = 0 + starty * pApp->m_iJuliaWidth;
+	unsigned int iIndex = 0 + starty * pApp->get_JuliaWidth();
 
 	// calculate each row...
 	double _d = start_d;
@@ -53,7 +53,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaX87(void* pArguments)
 		// calculate each pixel...
 		double _c = start_c;
 
-		for (int x = 0; x < pApp->m_iJuliaWidth; x += 1)
+		for (int x = 0; x < pApp->get_JuliaWidth(); x += 1)
 		{
 			// calculate each iteration...
 			double c = _c;
@@ -81,10 +81,14 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaX87(void* pArguments)
 	}
 	// stop the performance counter
 	QueryPerformanceCounter(&tStop);
-	pApp->m_tJuliaThreadDuration[iThreadIndex].QuadPart = tStop.QuadPart - tStart.QuadPart;
+	pApp->m_tThreadDuration[FractalType::Julia][iThreadIndex].QuadPart = tStop.QuadPart - tStart.QuadPart;
 
 	// tell the application that the thread is complete
-	PostMessage(pApp->get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETEJULIA87, 0);
+	PostMessage(
+		pApp->get_hWnd(), 
+		pThreadInfo->iThreadCompleteMessage, 
+		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->iThreadCompleteLParam);
 
 	return 0;
 }
@@ -113,9 +117,6 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX32(void* pArguments)
 	CJuliasmApp *pApp = pThreadInfo->pApp;
 	int iThreadIndex = pThreadInfo->iThreadIndex;
 
-	// Indicate that another working thread has started
-	InterlockedIncrement(&pApp->m_iJuliaReady[iThreadIndex]);
-
 	//
 	// start the calculation
 	//
@@ -128,26 +129,26 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX32(void* pArguments)
 
 
 	// get the bitmap for drawing the image
-	unsigned int* l_ppvBitsJulia = (unsigned int*)pApp->m_bmpJulia.get_bmpBits();
+	unsigned int* l_ppvBitsJulia = (unsigned int*)pApp->m_bmpFractal[FractalType::Julia].get_bmpBits();
 
 	//
 	// make a local copy of variables from the parent (Application) object
 	// to simplify code
 	volatile __declspec(align(32)) int 
 			x, y,										// current x, and y locations
-			num_threadsi = pApp->m_iJuliaThreadCount,	// the number of worker threads (needed to chop up the problem per thread)
-			width_pixi = pApp->m_iJuliaWidth,			// the screen width in pixels
-			height_pixi = pApp->m_iJuliaHeight;			// the screen height in pixels
+			num_threadsi = pApp->m_iCalcThreadCount[FractalType::Julia],	// the number of worker threads (needed to chop up the problem per thread)
+			width_pixi = pApp->get_JuliaWidth(),			// the screen width in pixels
+			height_pixi = pApp->get_JuliaHeight();			// the screen height in pixels
 
 
 	volatile __declspec(align(32)) float 
-		c1f = pApp->m_jc1_sse,		// the REAL numerical value assigned to the LEFT-most pixel on the screen
-		c2f = pApp->m_jc2_sse,		//  the REAL numerical value assigned to the RIGHT-most pixel on the screen
-		d1f = pApp->m_jd1_sse,		//  the IMAGINARY numerical value assigned to the TOP-most pixel on the screen
-		d2f = pApp->m_jd2_sse,		//  the IMAGINARY numerical value assigned to the BOTTOM-most pixel on the screen
+		c1f = (float)pApp->m_jc1,		// the REAL numerical value assigned to the LEFT-most pixel on the screen
+		c2f = (float)pApp->m_jc2,		//  the REAL numerical value assigned to the RIGHT-most pixel on the screen
+		d1f = (float)pApp->m_jd1,		//  the IMAGINARY numerical value assigned to the TOP-most pixel on the screen
+		d2f = (float)pApp->m_jd2,		//  the IMAGINARY numerical value assigned to the BOTTOM-most pixel on the screen
 		
-		af = pApp->m_ja_sse,		// the REAL portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
-		bf = pApp->m_jb_sse,		// the IMAGINARY portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
+		af = (float)pApp->m_ja,		// the REAL portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
+		bf = (float)pApp->m_jb,		// the IMAGINARY portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
 
 		height_num_threadf = (d2f - d1f) / num_threadsi,	// the numerical heigt of the pportion of the calculation handled by this thread
 
@@ -198,7 +199,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX32(void* pArguments)
 		__m256 start_c = initial_c; // _mm256_load_ps((const float*)ic_avx);
 		__m256 c = initial_c;
 
-		for (x = 0; x < pApp->m_iJuliaWidth; x += POINTS_CONCURRENT_AVX32)
+		for (x = 0; x < pApp->get_JuliaWidth(); x += POINTS_CONCURRENT_AVX32)
 		{
 			// initilize c, d, and the iteration count
 			__m256 iterations = _mm256_setzero_ps();
@@ -230,7 +231,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX32(void* pArguments)
 
 			for (int j = 0; j < POINTS_CONCURRENT_AVX32; ++j)
 			{
-				((unsigned int*)l_ppvBitsJulia)[y * pApp->m_iJuliaWidth + x + j] = (iterations_avx[j] >= max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_avx[j]);
+				((unsigned int*)l_ppvBitsJulia)[y * pApp->get_JuliaWidth() + x + j] = (iterations_avx[j] >= max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_avx[j]);
 			}
 
 			// generate the next set of 'c' values by adding the c_increment to the current c
@@ -244,10 +245,14 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX32(void* pArguments)
 	
 	// stop the performance counter
 	QueryPerformanceCounter(&iTicksEnd);
-	pApp->m_tJuliaThreadDuration[iThreadIndex].QuadPart = iTicksEnd.QuadPart - iTicksStart.QuadPart;
+	pApp->m_tThreadDuration[FractalType::Julia][iThreadIndex].QuadPart = iTicksEnd.QuadPart - iTicksStart.QuadPart;
 
-	// tell the application that the calculation is complete
-	PostMessage(pApp->get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETEJULIAAVX32, 0);
+	// tell the application that the thread is complete
+	PostMessage(
+		pApp->get_hWnd(), 
+		pThreadInfo->iThreadCompleteMessage, 
+		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->iThreadCompleteLParam);
 
 	// end the function.  we should never get here
 	return 0;
@@ -271,10 +276,6 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX64(void* pArguments)
 	CJuliasmApp *pApp = pThreadInfo->pApp;
 	int iThreadIndex = pThreadInfo->iThreadIndex;
 
-	// Indicate that another working thread has started
-	InterlockedIncrement(&pApp->m_iJuliaReady[iThreadIndex]);
-
-
 	//
 	// start the calculation
 	//
@@ -287,26 +288,26 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX64(void* pArguments)
 
 
 	// get the bitmap for drawing the image
-	unsigned int* l_ppvBitsJulia = (unsigned int*)pApp->m_bmpJulia.get_bmpBits();
+	unsigned int* l_ppvBitsJulia = (unsigned int*)pApp->m_bmpFractal[FractalType::Julia].get_bmpBits();
 
 	//
 	// make a local copy of variables from the parent (Application) object
 	// to simplify code
 	volatile __declspec(align(32)) int 
 			x, y,										// current x, and y locations
-			num_threadsi = pApp->m_iJuliaThreadCount,	// the number of worker threads (needed to chop up the problem per thread)
-			width_pixi = pApp->m_iJuliaWidth,			// the screen width in pixels
-			height_pixi = pApp->m_iJuliaHeight;			// the screen height in pixels
+			num_threadsi = pApp->m_iCalcThreadCount[FractalType::Julia],	// the number of worker threads (needed to chop up the problem per thread)
+			width_pixi = pApp->get_JuliaWidth(),			// the screen width in pixels
+			height_pixi = pApp->get_JuliaHeight();			// the screen height in pixels
 
 
 	volatile __declspec(align(32)) double 
-		c1f = pApp->m_jc1_sse,		// the REAL numerical value assigned to the LEFT-most pixel on the screen
-		c2f = pApp->m_jc2_sse,		//  the REAL numerical value assigned to the RIGHT-most pixel on the screen
-		d1f = pApp->m_jd1_sse,		//  the IMAGINARY numerical value assigned to the TOP-most pixel on the screen
-		d2f = pApp->m_jd2_sse,		//  the IMAGINARY numerical value assigned to the BOTTOM-most pixel on the screen
+		c1f = pApp->m_jc1,		// the REAL numerical value assigned to the LEFT-most pixel on the screen
+		c2f = pApp->m_jc2,		//  the REAL numerical value assigned to the RIGHT-most pixel on the screen
+		d1f = pApp->m_jd1,		//  the IMAGINARY numerical value assigned to the TOP-most pixel on the screen
+		d2f = pApp->m_jd2,		//  the IMAGINARY numerical value assigned to the BOTTOM-most pixel on the screen
 		
-		af = pApp->m_ja_sse,		// the REAL portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
-		bf = pApp->m_jb_sse,		// the IMAGINARY portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
+		af = pApp->m_ja,		// the REAL portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
+		bf = pApp->m_jb,		// the IMAGINARY portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
 
 		height_num_threadf = (d2f - d1f) / num_threadsi,	// the numerical heigt of the pportion of the calculation handled by this thread
 
@@ -353,7 +354,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX64(void* pArguments)
 		__m256d start_c = initial_c; // _mm256_load_pd((const double*)ic_avx);
 		__m256d c = initial_c;
 
-		for (x = 0; x < pApp->m_iJuliaWidth; x += POINTS_CONCURRENT_AVX64)
+		for (x = 0; x < pApp->get_JuliaWidth(); x += POINTS_CONCURRENT_AVX64)
 		{
 			// initilize c, d, and the iteration count
 			__m256d iterations = _mm256_setzero_pd();
@@ -384,7 +385,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX64(void* pArguments)
 
 			for (int j = 0; j < POINTS_CONCURRENT_AVX64; ++j)
 			{
-				((unsigned int*)l_ppvBitsJulia)[y * pApp->m_iJuliaWidth + x + j] = (iterations_avx[j] >= max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_avx[j]);
+				((unsigned int*)l_ppvBitsJulia)[y * pApp->get_JuliaWidth() + x + j] = (iterations_avx[j] >= max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_avx[j]);
 			}
 
 			// generate the next set of 'c' values by adding the c_increment to the current c
@@ -398,10 +399,14 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX64(void* pArguments)
 	
 	// stop the performance counter
 	QueryPerformanceCounter(&iTicksEnd);
-	pApp->m_tJuliaThreadDuration[iThreadIndex].QuadPart = iTicksEnd.QuadPart - iTicksStart.QuadPart;
+	pApp->m_tThreadDuration[FractalType::Julia][iThreadIndex].QuadPart = iTicksEnd.QuadPart - iTicksStart.QuadPart;
 
-	// tell the application that the calculation is complete
-	PostMessage(pApp->get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETEJULIAAVX64, 0);
+	// tell the application that the thread is complete
+	PostMessage(
+		pApp->get_hWnd(), 
+		pThreadInfo->iThreadCompleteMessage, 
+		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->iThreadCompleteLParam);
 
 	// end the function.  we should never get here
 	return 0;
@@ -424,9 +429,6 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE(void* pArguments)
 	CJuliasmApp *pApp = pThreadInfo->pApp;
 	int iThreadIndex = pThreadInfo->iThreadIndex;
 
-	// Indicate that another working thread has started
-	InterlockedIncrement(&pApp->m_iJuliaReady[iThreadIndex]);
-
 	//
 	// start the calculation
 	//
@@ -439,26 +441,26 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE(void* pArguments)
 
 
 	// get the bitmap for drawing the image
-	unsigned int* l_ppvBitsJulia = (unsigned int*)pApp->m_bmpJulia.get_bmpBits();
+	unsigned int* l_ppvBitsJulia = (unsigned int*)pApp->m_bmpFractal[FractalType::Julia].get_bmpBits();
 
 	//
 	// make a local copy of variables from the parent (Application) object
 	// to simplify code
 	volatile __declspec(align(16)) int 
 			x, y,										// current x, and y locations
-			num_threadsi = pApp->m_iJuliaThreadCount,	// the number of worker threads (needed to chop up the problem per thread)
-			width_pixi = pApp->m_iJuliaWidth,			// the screen width in pixels
-			height_pixi = pApp->m_iJuliaHeight;			// the screen height in pixels
+			num_threadsi = pApp->m_iCalcThreadCount[FractalType::Julia],	// the number of worker threads (needed to chop up the problem per thread)
+			width_pixi = pApp->get_JuliaWidth(),			// the screen width in pixels
+			height_pixi = pApp->get_JuliaHeight();			// the screen height in pixels
 
 
 	volatile __declspec(align(16)) float 
-		c1f = pApp->m_jc1_sse,		// the REAL numerical value assigned to the LEFT-most pixel on the screen
-		c2f = pApp->m_jc2_sse,		//  the REAL numerical value assigned to the RIGHT-most pixel on the screen
-		d1f = pApp->m_jd1_sse,		//  the IMAGINARY numerical value assigned to the TOP-most pixel on the screen
-		d2f = pApp->m_jd2_sse,		//  the IMAGINARY numerical value assigned to the BOTTOM-most pixel on the screen
+		c1f = (float)pApp->m_jc1,		// the REAL numerical value assigned to the LEFT-most pixel on the screen
+		c2f = (float)pApp->m_jc2,		//  the REAL numerical value assigned to the RIGHT-most pixel on the screen
+		d1f = (float)pApp->m_jd1,		//  the IMAGINARY numerical value assigned to the TOP-most pixel on the screen
+		d2f = (float)pApp->m_jd2,		//  the IMAGINARY numerical value assigned to the BOTTOM-most pixel on the screen
 		
-		af = pApp->m_ja_sse,		// the REAL portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
-		bf = pApp->m_jb_sse,		// the IMAGINARY portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
+		af = (float)pApp->m_ja,		// the REAL portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
+		bf = (float)pApp->m_jb,		// the IMAGINARY portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
 
 		height_num_threadf = (d2f - d1f) / num_threadsi,	// the numerical heigt of the pportion of the calculation handled by this thread
 
@@ -508,7 +510,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE(void* pArguments)
 		__m128 start_c = initial_c; 
 		__m128 c = initial_c;
 
-		for (x = 0; x < pApp->m_iJuliaWidth; x += POINTS_CONCURRENT_SSE)
+		for (x = 0; x < pApp->get_JuliaWidth(); x += POINTS_CONCURRENT_SSE)
 		{
 			// initilize c, d, and the iteration count
 			__m128 iterations = _mm_setzero_ps();
@@ -540,7 +542,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE(void* pArguments)
 
 			for (int j = 0; j < POINTS_CONCURRENT_SSE; ++j)
 			{
-				((unsigned int*)l_ppvBitsJulia)[y * pApp->m_iJuliaWidth + x + j] = (iterations_avx[j] >= max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_avx[j]);
+				((unsigned int*)l_ppvBitsJulia)[y * pApp->get_JuliaWidth() + x + j] = (iterations_avx[j] >= max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_avx[j]);
 			}
 
 			// generate the next set of 'c' values by adding the c_increment to the current c
@@ -554,12 +556,15 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE(void* pArguments)
 	
 	// stop the performance counter
 	QueryPerformanceCounter(&iTicksEnd);
-	pApp->m_tJuliaThreadDuration[iThreadIndex].QuadPart = iTicksEnd.QuadPart - iTicksStart.QuadPart;
+	pApp->m_tThreadDuration[FractalType::Julia][iThreadIndex].QuadPart = iTicksEnd.QuadPart - iTicksStart.QuadPart;
 
-	// tell the application that the calculation is complete
-	PostMessage(pApp->get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETEJULIASSE, 0);
+	// tell the application that the thread is complete
+	PostMessage(
+		pApp->get_hWnd(), 
+		pThreadInfo->iThreadCompleteMessage, 
+		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->iThreadCompleteLParam);
 
-	// end the function.  we should never get here
 	return 0;
 }
 // #pragma optimize("", on )
@@ -576,9 +581,6 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE2(void* pArguments)
 	CJuliasmApp *pApp = pThreadInfo->pApp;
 	int iThreadIndex = pThreadInfo->iThreadIndex;
 
-	// Indicate that another working thread has started
-	InterlockedIncrement(&pApp->m_iJuliaReady[iThreadIndex]);
-
 	//
 	// start the calculation
 	//
@@ -591,26 +593,26 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE2(void* pArguments)
 
 
 	// get the bitmap for drawing the image
-	unsigned int* l_ppvBitsJulia = (unsigned int*)pApp->m_bmpJulia.get_bmpBits();
+	unsigned int* l_ppvBitsJulia = (unsigned int*)pApp->m_bmpFractal[FractalType::Julia].get_bmpBits();
 
 	//
 	// make a local copy of variables from the parent (Application) object
 	// to simplify code
 	volatile __declspec(align(16)) int 
 			x, y,										// current x, and y locations
-			num_threadsi = pApp->m_iJuliaThreadCount,	// the number of worker threads (needed to chop up the problem per thread)
-			width_pixi = pApp->m_iJuliaWidth,			// the screen width in pixels
-			height_pixi = pApp->m_iJuliaHeight;			// the screen height in pixels
+			num_threadsi = pApp->m_iCalcThreadCount[FractalType::Julia],	// the number of worker threads (needed to chop up the problem per thread)
+			width_pixi = pApp->get_JuliaWidth(),			// the screen width in pixels
+			height_pixi = pApp->get_JuliaHeight();			// the screen height in pixels
 
 
 	volatile __declspec(align(16)) double 
-		c1f = pApp->m_jc1_sse,		// the REAL numerical value assigned to the LEFT-most pixel on the screen
-		c2f = pApp->m_jc2_sse,		//  the REAL numerical value assigned to the RIGHT-most pixel on the screen
-		d1f = pApp->m_jd1_sse,		//  the IMAGINARY numerical value assigned to the TOP-most pixel on the screen
-		d2f = pApp->m_jd2_sse,		//  the IMAGINARY numerical value assigned to the BOTTOM-most pixel on the screen
+		c1f = pApp->m_jc1,		// the REAL numerical value assigned to the LEFT-most pixel on the screen
+		c2f = pApp->m_jc2,		//  the REAL numerical value assigned to the RIGHT-most pixel on the screen
+		d1f = pApp->m_jd1,		//  the IMAGINARY numerical value assigned to the TOP-most pixel on the screen
+		d2f = pApp->m_jd2,		//  the IMAGINARY numerical value assigned to the BOTTOM-most pixel on the screen
 		
-		af = pApp->m_ja_sse,		// the REAL portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
-		bf = pApp->m_jb_sse,		// the IMAGINARY portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
+		af = pApp->m_ja,		// the REAL portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
+		bf = pApp->m_jb,		// the IMAGINARY portion of the constant parameter that defines this julia set (a pixel from the Mandelbrot set)
 
 		height_num_threadf = (d2f - d1f) / num_threadsi,	// the numerical heigt of the pportion of the calculation handled by this thread
 
@@ -660,7 +662,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE2(void* pArguments)
 		__m128d start_c = initial_c; 
 		__m128d c = initial_c;
 
-		for (x = 0; x < pApp->m_iJuliaWidth; x += POINTS_CONCURRENT_SSE2)
+		for (x = 0; x < pApp->get_JuliaWidth(); x += POINTS_CONCURRENT_SSE2)
 		{
 			// initilize c, d, and the iteration count
 			__m128d iterations = _mm_setzero_pd();
@@ -692,7 +694,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE2(void* pArguments)
 
 			for (int j = 0; j < POINTS_CONCURRENT_SSE2; ++j)
 			{
-				((unsigned int*)l_ppvBitsJulia)[y * pApp->m_iJuliaWidth + x + j] = (iterations_avx[j] >= max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_avx[j]);
+				((unsigned int*)l_ppvBitsJulia)[y * pApp->get_JuliaWidth() + x + j] = (iterations_avx[j] >= max_i) ? 0 : pApp->m_PaletteDefault.get_Color((int)iterations_avx[j]);
 			}
 
 			// generate the next set of 'c' values by adding the c_increment to the current c
@@ -706,11 +708,53 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE2(void* pArguments)
 	
 	// stop the performance counter
 	QueryPerformanceCounter(&iTicksEnd);
-	pApp->m_tJuliaThreadDuration[iThreadIndex].QuadPart = iTicksEnd.QuadPart - iTicksStart.QuadPart;
+	pApp->m_tThreadDuration[FractalType::Julia][iThreadIndex].QuadPart = iTicksEnd.QuadPart - iTicksStart.QuadPart;
 
-	// tell the application that the calculation is complete
-	PostMessage(pApp->get_hWnd(), WM_COMMAND, IDM_THREADCOMPLETEJULIASSE2, 0);
-
+	// tell the application that the thread is complete
+	PostMessage(
+		pApp->get_hWnd(), 
+		pThreadInfo->iThreadCompleteMessage, 
+		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->iThreadCompleteLParam);
 	// end the function.  we should never get here
+	return 0;
+}
+DWORD WINAPI CJuliasmApp::CalculateJuliaFMA(void* pArguments)
+{
+	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
+	CJuliasmApp *pApp = pThreadInfo->pApp;
+
+	// tell the application that the thread is complete
+	PostMessage(
+		pApp->get_hWnd(), 
+		pThreadInfo->iThreadCompleteMessage, 
+		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->iThreadCompleteLParam);
+
+	return 0;
+}
+
+DWORD WINAPI CJuliasmApp::CalculateJuliaOpenCL(void* pArguments)
+{
+	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
+	CJuliasmApp *pApp = pThreadInfo->pApp;
+
+	// Execute the calculation
+	cl_int error;
+	if (false == pApp->m_OCLJulia.ExecuteProgram(0, &error))
+	{
+		char szBuf[64];
+		sprintf_s(szBuf, _countof(szBuf), "Error %d executing OpenCL kernel.", error);
+		MessageBox(NULL, szBuf, "Error", MB_ICONEXCLAMATION);
+	}
+	pThreadInfo->oclError = error;
+
+	// tell the application that the thread is complete
+	PostMessage(
+		pApp->get_hWnd(), 
+		pThreadInfo->iThreadCompleteMessage, 
+		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->iThreadCompleteLParam);
+
 	return 0;
 }

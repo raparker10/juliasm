@@ -2,7 +2,7 @@
 
 COpenCLImage::COpenCLImage()
 {
-		m_Image = NULL;
+	m_Image = (cl_mem)CL_INVALID_MEM_OBJECT;
 	m_iWidth = m_iHeight = 0;
 	m_iNumberPaletteColors = 0;
 }
@@ -79,12 +79,18 @@ int COpenCL::BuildPlatformList(void)
 
 	// get the number of OpenCL platforms
 	err = clGetPlatformIDs(1, NULL, &num_platforms);
-	if (err < 0)
+	if (err != CL_SUCCESS)
 		return 0;
+
+	// make sure we don't get too many platforms (very unlikely)
+	if (num_platforms > MAX_PLATFORMS)
+	{
+		num_platforms = MAX_PLATFORMS;
+	}
 
 	// get the list of OpenCL platform IDs
 	err = clGetPlatformIDs(num_platforms, m_PlatformID, NULL);
-	if (err < 0)
+	if (err != CL_SUCCESS)
 		return 0;
 
 	// get the OpenCL platform names
@@ -218,8 +224,12 @@ bool COpenCL::LoadProgram(char * szProgramPath, bool bUseProgramPath)
 
 	// open the file
 	FILE *fh = fopen(m_szProgramPath, "rt");
+	assert(fh != NULL);
 	if (fh == NULL)
+	{
+		MessageBox(NULL, szProgramPath, "Unable to open OpcnCL file", MB_ICONEXCLAMATION | MB_OK);
 		return false;
+	}
 
 	// get the file length
 	fseek(fh, 0, SEEK_END);
@@ -253,7 +263,9 @@ bool COpenCL::PrepareProgram(void)
 		if (error == CL_SUCCESS)
 		{
 			// build the program for the CURRENT device
-			cl_int build_error = clBuildProgram(m_Program, 1, &m_DeviceID[m_iCurrentDeviceIndex],	"-s \"C:/Users/Robert/Documents/Visual Studio 2013/Projects/juliasm/fractals.cl\"", NULL, NULL);
+//			cl_int build_error = clBuildProgram(m_Program, 1, &m_DeviceID[m_iCurrentDeviceIndex],	"-s \"C:/Users/Robert/Documents/Visual Studio 2013/Projects/juliasm/fractals.cl\"", NULL, NULL);
+			cl_int build_error = clBuildProgram(m_Program, 1, &m_DeviceID[m_iCurrentDeviceIndex],	NULL, NULL, NULL);
+			m_iLastBuildStatus = build_error;
 
 			// get the build log for the CURRENT device
 			char build_log[BUILD_LOG_LEN];
@@ -270,7 +282,11 @@ bool COpenCL::PrepareProgram(void)
 					error = clGetProgramBuildInfo(m_Program, m_DeviceID[d], CL_PROGRAM_BUILD_LOG, size_ret, ptr, &size_ret);
 					if (size_ret > 0)
 					{
-						// RAP implement this functionalithy							image_output.appendMultiLine(ptr);
+						put_LastBuildMessage(ptr);
+					}
+					else
+					{
+						put_LastBuildMessage("");
 					}
 					free(ptr);
 				}
@@ -320,6 +336,12 @@ bool COpenCLImage::put_ImageSize(int width, int height)
 		m_Image = (cl_mem)CL_INVALID_MEM_OBJECT;
 	}
 
+	m_iHeight = height;
+	m_iWidth = width;
+
+	if (width == 0 || height == 0)
+		return true; // returns true, but there is no image
+
 	m_ImageFormat.image_channel_data_type = CL_UNORM_INT8;
 	m_ImageFormat.image_channel_order = CL_RGBA;
 
@@ -329,8 +351,6 @@ bool COpenCLImage::put_ImageSize(int width, int height)
 		return false;
 	}
 
-	m_iHeight = height;
-	m_iWidth = width;
 
 	return error == CL_SUCCESS;
 }
@@ -342,10 +362,10 @@ bool COpenCLMand::PrepareProgramBuffers(void)
 	m_ImageFormat.image_channel_data_type = CL_UNORM_INT8;
 	m_ImageFormat.image_channel_order = CL_RGBA;
 
-	if (m_Image != NULL)
+	if (m_Image != (cl_mem)CL_INVALID_MEM_OBJECT)
 	{
 		clReleaseMemObject(m_Image);
-		m_Image = NULL;
+		m_Image = (cl_mem)CL_INVALID_MEM_OBJECT;
 	}
 	m_Image = clCreateImage2D(m_Context, CL_MEM_WRITE_ONLY, &m_ImageFormat, DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE, 0, NULL, &error);
 	if (error != CL_SUCCESS)
@@ -411,7 +431,7 @@ bool COpenCLMand::ExecuteProgram(int iKernel, cl_int *pError)
 	m_NumericRect.s2 = m_ma2;
 	m_NumericRect.s3 = m_mb2;
 
-	if (m_Kernel[0] == NULL)
+	if (m_Kernel[0] == (cl_kernel)CL_INVALID_KERNEL)
 		return false;
 
 	error = clSetKernelArg(m_Kernel[0], 3, sizeof(m_PaletteBuffer), &m_PaletteBuffer);

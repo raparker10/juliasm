@@ -9,19 +9,17 @@
 
 class CApplication {
 protected:
-	static HWND m_hWnd;
+	HWND m_hWnd;
 public:
 	CApplication();
 	~CApplication();
 
-	HWND get_hWnd(void) const {
-		return m_hWnd;
-	}
+	HWND get_hWnd(void) const {	return m_hWnd; }
 	
 	static LRESULT CALLBACK CApplication::MessageProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual bool handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps) { return false; }
 	virtual bool handle_create(HWND hWnd, LPCREATESTRUCT *lpcs) { return false; }
-	virtual bool handle_command(HWND hWnd, int wmID, int wmEvent) { return false; }
+	virtual bool handle_command(HWND hWnd, int wmID, int wmEvent, LPARAM lParam) { return false; }
 	virtual bool handle_keydown(HWND hWnd, int iVKey) { return false; }
 	virtual bool handle_char(HWND hWnd, int iChar) { return false; }
 	virtual bool handle_vscroll(HWND hWnd, int iScrollRequest, int iScrollPosition) { return false; }
@@ -30,5 +28,9 @@ public:
 	virtual bool handle_lbuttondoubleclick(HWND hWnd, WPARAM wvKeyDown, WORD x, WORD y) { return false; }
 	virtual bool handle_mousewheel(HWND hWnd, WORD wvKeys, int iRotationAmount, int x, int y) { return false; }
 	virtual bool handle_lbuttondown(HWND hWnd, WORD wvKeys, int x, int y) { return true; }
-	virtual bool handle_lbuttonup(HWND hWnd, WORD	wvKeys, int x, int y) { return true; }	
+	virtual bool handle_lbuttonup(HWND hWnd, WORD	wvKeys, int x, int y) { return true; }
+	virtual bool handle_rbuttondown(HWND hWnd, WORD wvKeys, int x, int y) { return true; }
+	virtual bool handle_rbuttonup(HWND hWnd, WORD	wvKeys, int x, int y) { return true; }
+
+
 };

@@ -126,6 +126,14 @@ int isSSE41andSSE42Supported(void);
 #define CPUID_INTEL_AVX512BW	(1 << 30)
 #define CPUID_INTEL_AVX512VL	(1 << 31)
 
+
+struct TProc {
+	int iFamily;
+	int iModel;
+	char *szName;
+	char *szReleaseDate;
+	char *szComment;
+};
 struct TProcCaps {
 	bool has_CPUID;
 	unsigned int iHighestFunction;
@@ -176,16 +184,23 @@ protected:
 	CPUIDinfo info_07;
 
 	TProcCaps m_Caps;
-	
+	static TProc m_CPUList[];
+	static int m_iCPUCount;
 
 	static void get_cpuid_info(CPUIDinfo *, const unsigned int, const unsigned int);
 	static int is_cpuid_supported(void);
 	static int is_genuine_intel(void);
 public:
 	CCPU();
-
+	bool get_VendorID(char *szBuf, size_t iBufCount);
+	bool get_SteppingName(char *szBuf, size_t iBufCount);
+	bool get_ModelName(char *szBuf, size_t iBufCount);
+	bool get_FamilyName(char *szBuf, size_t iBufCount);
+	bool get_ProcessorTypeName(char *szBuf, size_t iBufCount);
+	bool get_MicroarchitectureName(char *szBuf, size_t iBufCount);
+	
 	bool has_CPUID(void) const { return m_Caps.has_CPUID; }
-	bool bas_x87(void) const { return m_Caps.has_x87;  }
+	bool has_x87(void) const { return m_Caps.has_x87;  }
 	bool has_MMX(void) const  { return m_Caps.has_MMX; }
 	bool has_SSE(void) const { return m_Caps.has_SSE;}
 	bool has_SSE2(void) const { return m_Caps.has_SSE2; }
@@ -213,6 +228,4 @@ public:
 	bool has_TSX(void) const{ return m_Caps.has_TSX; }	// Transactional Synchronization Extensions
 	bool has_ADX(void) const{ return m_Caps.has_ADX; }	//	Intel ADX (Multi-Precision Add-Carry Instruction Extensions) for arbitrary-precision math
 	bool has_SHA(void) const{ return m_Caps.has_SHA; }	// suppport for Secure Hash Algorithm
-
-
 };
