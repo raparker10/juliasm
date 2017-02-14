@@ -21,15 +21,16 @@ protected:
 	COLORREF l_Colors[MAX_COLORS];
 	bool l_bDirty;
 	bool l_bBlackAndWhite;
-	void FillPalette(unsigned char *ucPalette, CPixelPoint * pPalettePoints, unsigned int iNumberPalettePoints);
+	virtual void FillPalette(unsigned char *ucPalette, CPixelPoint * pPalettePoints, unsigned int iNumberPalettePoints);
 public:
 	CPalette();
-	void PushColorPoint(const int iChannel, const CPixelPoint &p);
+	virtual void PushColorPoint(const int iChannel, const CPixelPoint &p);
 	COLORREF get_Color(int iPaletteEntry);	
-	void UpdateColors(void);
+	COLORREF get_Color(float fPaletteEntry);	
+	virtual void UpdateColors(void);
 	CPalette & operator=(const CPalette &p);
-	inline void put_BlackAndWhite(const bool bBlackAndWhite) { 
-		l_bDirty = l_bBlackAndWhite != bBlackAndWhite;;
+	void put_BlackAndWhite(const bool bBlackAndWhite) { 
+		l_bDirty = l_bBlackAndWhite != bBlackAndWhite;
 		l_bBlackAndWhite = bBlackAndWhite; 
 	}
 	inline bool get_BlackAndWhite(void) const { return l_bBlackAndWhite; }
@@ -37,4 +38,12 @@ public:
 	unsigned char *get_GreenChannel(void) { return ucGreen; }
 	unsigned char *get_BlueChannel(void) { return ucBlue; }
 };
+class CPaletteZebra : public CPalette {
+public:
+	CPaletteZebra();
+	~CPaletteZebra();
+
+	virtual void UpdateColors(void);
+};
+
 #endif

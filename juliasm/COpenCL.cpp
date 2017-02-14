@@ -223,7 +223,7 @@ bool COpenCL::LoadProgram(char * szProgramPath, bool bUseProgramPath)
 	}
 
 	// open the file
-	FILE *fh = fopen(m_szProgramPath, "rt");
+	FILE *fh = fopen(m_szProgramPath, "r");
 	assert(fh != NULL);
 	if (fh == NULL)
 	{
@@ -238,10 +238,13 @@ bool COpenCL::LoadProgram(char * szProgramPath, bool bUseProgramPath)
 
 	// load the file
 	m_szProgramText[0] = (char*)calloc(1, m_iProgramLength[0] + 1);
+	size_t len;
 	if (m_szProgramText[0] != NULL)
 	{
-		fread(m_szProgramText[0], m_iProgramLength[0], 1, fh);
-		m_szProgramText[0][m_iProgramLength[0] - 1] = 0;
+		len = fread(m_szProgramText[0], 1, m_iProgramLength[0] , fh);
+//		m_szProgramText[0][m_iProgramLength[0] - 1] = 0;
+		m_szProgramText[0][len - 1] = 0;
+		m_iProgramLength[0] = len;
 	}
 	fclose(fh);
 	return m_szProgramText[0] != NULL;
@@ -431,31 +434,31 @@ bool COpenCLMand::ExecuteProgram(int iKernel, cl_int *pError)
 	m_NumericRect.s2 = m_ma2;
 	m_NumericRect.s3 = m_mb2;
 
-	if (m_Kernel[0] == (cl_kernel)CL_INVALID_KERNEL)
+	if (m_Kernel[iKernel] == (cl_kernel)CL_INVALID_KERNEL)
 		return false;
 
-	error = clSetKernelArg(m_Kernel[0], 3, sizeof(m_PaletteBuffer), &m_PaletteBuffer);
+	error = clSetKernelArg(m_Kernel[iKernel], 3, sizeof(m_PaletteBuffer), &m_PaletteBuffer);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[0], 2, sizeof(m_fMaxIterations), &m_fMaxIterations);
+	error = clSetKernelArg(m_Kernel[iKernel], 2, sizeof(m_fMaxIterations), &m_fMaxIterations);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[0], 1, sizeof(m_NumericRect), &m_NumericRect);
+	error = clSetKernelArg(m_Kernel[iKernel], 1, sizeof(m_NumericRect), &m_NumericRect);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[0], 0, sizeof(cl_mem), &m_Image);
+	error = clSetKernelArg(m_Kernel[iKernel], 0, sizeof(cl_mem), &m_Image);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
@@ -463,7 +466,7 @@ bool COpenCLMand::ExecuteProgram(int iKernel, cl_int *pError)
 	}
 
 	size_t global_size[2] = { m_iWidth, m_iHeight };
-	error = clEnqueueNDRangeKernel(m_CommandQueue, m_Kernel[0], 2, NULL, global_size, NULL, 0, NULL, NULL);
+	error = clEnqueueNDRangeKernel(m_CommandQueue, m_Kernel[iKernel], 2, NULL, global_size, NULL, 0, NULL, NULL);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
@@ -528,38 +531,38 @@ bool COpenCLJulia::ExecuteProgram(int iKernel, cl_int *pError)
 {
 	cl_int error;
 
-	if (m_Kernel[1] == (cl_kernel)CL_INVALID_KERNEL)
+	if (m_Kernel[iKernel] == (cl_kernel)CL_INVALID_KERNEL)
 		return false;
 
-	error = clSetKernelArg(m_Kernel[1], 4, sizeof(m_PaletteBuffer), &m_PaletteBuffer);
+	error = clSetKernelArg(m_Kernel[iKernel], 4, sizeof(m_PaletteBuffer), &m_PaletteBuffer);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[1], 3, sizeof(m_fMaxIterations), &m_fMaxIterations);
+	error = clSetKernelArg(m_Kernel[iKernel], 3, sizeof(m_fMaxIterations), &m_fMaxIterations);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[1], 2, sizeof(m_NumericRect), &m_NumericRect);
+	error = clSetKernelArg(m_Kernel[iKernel], 2, sizeof(m_NumericRect), &m_NumericRect);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[1], 1, sizeof(m_Const), &m_Const);
+	error = clSetKernelArg(m_Kernel[iKernel], 1, sizeof(m_Const), &m_Const);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[1], 0, sizeof(cl_mem), &m_Image);
+	error = clSetKernelArg(m_Kernel[iKernel], 0, sizeof(cl_mem), &m_Image);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
@@ -567,7 +570,7 @@ bool COpenCLJulia::ExecuteProgram(int iKernel, cl_int *pError)
 	}
 
 	size_t global_size[2] = { m_iWidth, m_iHeight };
-	error = clEnqueueNDRangeKernel(m_CommandQueue, m_Kernel[1], 2, NULL, global_size, NULL, 0, NULL, NULL);
+	error = clEnqueueNDRangeKernel(m_CommandQueue, m_Kernel[iKernel], 2, NULL, global_size, NULL, 0, NULL, NULL);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;

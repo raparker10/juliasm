@@ -54,13 +54,23 @@ DWORD WINAPI CJuliasmApp::CalculateMandX87(void* pArguments)
 			double c2, d2, cd2;
 			double mag;
 			int i;
+			float fColor = 0;
 			for (i = 0; i < pApp->get_MaxIterationsMand(); ++i)
 			{
 				c2 = c * c;
 				d2 = d * d;
 				mag = c2 + d2;
-				if (mag > 4.0)
-					break;
+				if (mag > 40.0)
+				{
+					double _mc = log(sqrt(mag));
+					double _cc;
+					if (_mc > 0)
+						_cc = log(_mc);
+					else
+						_cc = log(-_mc);
+					fColor = i + 1.0 - _cc / log(2.0);
+					break;	
+				}
 				cd2 = 2 * c * d;
 				c = c2 - d2 + _a;
 				d = cd2 + _b;
@@ -68,7 +78,8 @@ DWORD WINAPI CJuliasmApp::CalculateMandX87(void* pArguments)
 			_a += da;
 
 			// convert the iteration count into a color and store it in the bitmap bits
-			l_ppvBits[iIndex++] = (i == pApp->get_MaxIterationsMand()) ? 0 : pApp->m_PaletteDefault.get_Color(i);
+//			l_ppvBits[iIndex++] = (i == pApp->get_MaxIterationsMand()) ? 0 : pApp->m_PaletteDefault.get_Color(i);
+			l_ppvBits[iIndex++] = (i == pApp->get_MaxIterationsMand()) ? 0 : pApp->m_PaletteDefault.get_Color(fColor);
 		}
 		_b += db;
 	}
@@ -661,7 +672,7 @@ DWORD WINAPI CJuliasmApp::CalculateMandOpenCL(void* pArguments)
 
 	// Execute the calculation
 	cl_int error;
-	if (false == pApp->m_OCLMand.ExecuteProgram(0, &error))
+	if (false == pApp->m_OCLMand.ExecuteProgram(pThread->iKernelNumber, &error))
 	{
 		char szBuf[64];
 		sprintf_s(szBuf, _countof(szBuf), "Error %d executing OpenCL kernel.", error);

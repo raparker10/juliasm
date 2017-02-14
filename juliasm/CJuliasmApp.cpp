@@ -1,25 +1,34 @@
 #include "stdafx.h"
 
 TCalcInfo CJuliasmApp::m_ci[] = {
-	{FractalType::Mand, CalcPlatform::None,			0,					NULL,				0,			0,					0,					0},
-	{FractalType::Mand, CalcPlatform::x87,			MAX_CPU_THREADS,	CalculateMandX87,	WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
-	{FractalType::Mand, CalcPlatform::SSE,			MAX_CPU_THREADS,	CalculateMandSSE,	WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
-	{FractalType::Mand, CalcPlatform::SSE2,			MAX_CPU_THREADS,	CalculateMandSSE2,	WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
-	{FractalType::Mand, CalcPlatform::AVX32,		MAX_CPU_THREADS,	CalculateMandAVX32, WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
-	{FractalType::Mand, CalcPlatform::AVX64,		MAX_CPU_THREADS,	CalculateMandAVX64, WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
-	{FractalType::Mand, CalcPlatform::FMA,			MAX_CPU_THREADS,	CalculateMandFMA,	WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
-	{FractalType::Mand, CalcPlatform::OpenCL_CPU,	MAX_OCL_THREADS,	CalculateMandOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 1},
-	{FractalType::Mand, CalcPlatform::OpenCL_GPU,	MAX_OCL_THREADS,	CalculateMandOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 1},
+	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::None,			0,					NULL,				0,			0,					0,					0},
+	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::x87,			MAX_CPU_THREADS,	CalculateMandX87,	WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
+	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::SSE,			MAX_CPU_THREADS,	CalculateMandSSE,	WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
+	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::SSE2,			MAX_CPU_THREADS,	CalculateMandSSE2,	WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
+	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::AVX32,		MAX_CPU_THREADS,	CalculateMandAVX32, WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
+	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::AVX64,		MAX_CPU_THREADS,	CalculateMandAVX64, WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
+	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::FMA,			MAX_CPU_THREADS,	CalculateMandFMA,	WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
+	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::OpenCL_CPU,	MAX_OCL_THREADS,	CalculateMandOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 5},
+	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::OpenCL_GPU,	MAX_OCL_THREADS,	CalculateMandOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 5},
 
-	{FractalType::Julia, CalcPlatform::None,		0,					NULL,					0,			0,							0,					0},
-	{FractalType::Julia, CalcPlatform::x87,			MAX_CPU_THREADS,	CalculateJuliaX87,		WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
-	{FractalType::Julia, CalcPlatform::SSE,			MAX_CPU_THREADS,	CalculateJuliaSSE,		WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
-	{FractalType::Julia, CalcPlatform::SSE2,		MAX_CPU_THREADS,	CalculateJuliaSSE2,		WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
-	{FractalType::Julia, CalcPlatform::AVX32,		MAX_CPU_THREADS,	CalculateJuliaAVX32,	WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
-	{FractalType::Julia, CalcPlatform::AVX64,		MAX_CPU_THREADS,	CalculateJuliaAVX64,	WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
-	{FractalType::Julia, CalcPlatform::FMA,			MAX_CPU_THREADS,	CalculateJuliaFMA,		WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
-	{FractalType::Julia, CalcPlatform::OpenCL_CPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,	WM_COMMAND, IDM_THREADCOMPLETE,	CL_DEVICE_TYPE_CPU, 2},
-	{FractalType::Julia, CalcPlatform::OpenCL_GPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,	WM_COMMAND, IDM_THREADCOMPLETE,	CL_DEVICE_TYPE_GPU, 2},
+	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::None,		0,					NULL,					0,			0,							0,					0},
+	{FractalType::Julia, FractalFormula::FormMand, ::x87,			MAX_CPU_THREADS,	CalculateJuliaX87,		WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
+	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::SSE,			MAX_CPU_THREADS,	CalculateJuliaSSE,		WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
+	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::SSE2,		MAX_CPU_THREADS,	CalculateJuliaSSE2,		WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
+	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::AVX32,		MAX_CPU_THREADS,	CalculateJuliaAVX32,	WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
+	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::AVX64,		MAX_CPU_THREADS,	CalculateJuliaAVX64,	WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
+	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::FMA,			MAX_CPU_THREADS,	CalculateJuliaFMA,		WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
+//	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::OpenCL_CPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,	WM_COMMAND, IDM_THREADCOMPLETE,	CL_DEVICE_TYPE_CPU, 2},
+//	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::OpenCL_GPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,	WM_COMMAND, IDM_THREADCOMPLETE,	CL_DEVICE_TYPE_GPU, 2},
+
+	{FractalType::Julia, FractalFormula::FormSin, CalcPlatform::OpenCL_CPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 4},
+	{FractalType::Julia, FractalFormula::FormSin, CalcPlatform::OpenCL_GPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 4},
+
+	{FractalType::Julia, FractalFormula::FormCos, CalcPlatform::OpenCL_CPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 5},
+	{FractalType::Julia, FractalFormula::FormCos, CalcPlatform::OpenCL_GPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 5},
+
+	{FractalType::Julia, FractalFormula::FormExp, CalcPlatform::OpenCL_CPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 6},
+	{FractalType::Julia, FractalFormula::FormExp, CalcPlatform::OpenCL_GPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 6},
 	};
 
 
@@ -114,14 +123,16 @@ void CJuliasmApp::Initialize(void)
 	m_PaletteDefault.PushColorPoint(2, CPixelPoint(255, 0));
 
 	// create a palette from the color points
+//	m_PaletteDefault.put_BlackAndWhite(false);
 	m_PaletteDefault.UpdateColors();
+
 
 	// initialize the high-resolution timing functionality
 	QueryPerformanceFrequency(&m_ticksPerSecond);
 
 	// default the calculation "platform": None, x87, SSE, ... etc ...
-	put_CalcPlatform(FractalType::Mand, CalcPlatform::None);
-	put_CalcPlatform(FractalType::Julia, CalcPlatform::None);
+	put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::None);
+	put_CalcPlatform(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::None);
 
 	//
 	// initialize the font information
@@ -182,6 +193,11 @@ bool CJuliasmApp::handle_lbuttondoubleclick(HWND hWnd, WPARAM wvKeyDown, WORD x,
 	{
 		ZoomInMand(x, y, 0.8f);
 	}
+	else if (PtInRect(&m_rcJulia, p))
+	{
+		ZoomInJulia(x, y, 0.8f);
+	}
+
 	return true;
 }
 
@@ -323,9 +339,9 @@ bool CJuliasmApp::handle_create(HWND hWnd, LPCREATESTRUCT *lpcs)
 	ReleaseDC(hWnd, hdc);
 
 	// setup the application defaults
-	put_CalcPlatform(FractalType::Mand, CalcPlatform::SSE);
+	put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::SSE);
 	put_MaxIterationsMand(1024);
-	put_CalcPlatform(FractalType::Julia, CalcPlatform::AVX32);
+	put_CalcPlatform(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::AVX32);
 	put_MaxIterationsJulia(1024);
 
 	//
@@ -416,6 +432,7 @@ bool CJuliasmApp::StartCalc(FractalType ft)
 		m_ThreadInfo[ft][i].iThreadCompleteMessage = m_CalcCompleteMessage[ft];
 		m_ThreadInfo[ft][i].iThreadCompleteWParam = m_CalcCompleteWParam[ft];
 		m_ThreadInfo[ft][i].iThreadCompleteLParam = m_CalcCompleteLParam[ft];
+		m_ThreadInfo[ft][i].iKernelNumber = m_iCalcKernel[ft];
 
 		if (m_bmpFractal[ft].get_bmpBits() == NULL)
 		{
@@ -446,37 +463,37 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent, LPARAM lParam
 	switch (wmID)
 	{
 	case IDM_CALCULATE_MAND_X87:
-		put_CalcPlatform(FractalType::Mand, CalcPlatform::x87);
+		put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::x87);
 		PostCalc(FractalType::Mand);
 		break;
 
 	case IDM_CALCULATE_MAND_SSE:
-		put_CalcPlatform(FractalType::Mand, CalcPlatform::SSE);
+		put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::SSE);
 		PostCalc(FractalType::Mand);
 		break;
 
 	case IDM_CALCULATE_MAND_SSE2:
-		put_CalcPlatform(FractalType::Mand, CalcPlatform::SSE2);
+		put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::SSE2);
 		PostCalc(FractalType::Mand);
 		break;
 
 	case IDM_CALCULATE_MAND_AVX32:
-		put_CalcPlatform(FractalType::Mand, CalcPlatform::AVX32);
+		put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::AVX32);
 		PostCalc(FractalType::Mand);
 		break;
 
 	case IDM_CALCULATE_MAND_AVX64:
-		put_CalcPlatform(FractalType::Mand, CalcPlatform::AVX64);
+		put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::AVX64);
 		PostCalc(FractalType::Mand);
 		break;
 
 	case IDM_CALCULATE_MAND_OPENCL_CPU:
-		put_CalcPlatform(FractalType::Mand, CalcPlatform::OpenCL_CPU);
+		put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::OpenCL_CPU);
 		PostCalc(FractalType::Mand);
 		break;
 
 	case IDM_CALCULATE_MAND_OPENCL_GPU:
-		put_CalcPlatform(FractalType::Mand, CalcPlatform::OpenCL_GPU);
+		put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::OpenCL_GPU);
 		PostCalc(FractalType::Mand);
 		break;
 
@@ -508,37 +525,67 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent, LPARAM lParam
 		break;
 
 	case IDM_CALCULATE_JULIA_X87:
-		put_CalcPlatform(FractalType::Julia, CalcPlatform::x87);
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::x87);
 		PostCalc(FractalType::Julia);
 		return 0;
 
 	case IDM_CALCULATE_JULIA_SSE:	// fall through until SSE Julia is implemented
-		put_CalcPlatform(FractalType::Julia, CalcPlatform::SSE);
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::SSE);
 		PostCalc(FractalType::Julia);
 		return 0;
 
 	case IDM_CALCULATE_JULIA_SSE2:	// fall through until SSE2 Julia implemented
-		put_CalcPlatform(FractalType::Julia, CalcPlatform::SSE2);
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::SSE2);
 		PostCalc(FractalType::Julia);
 		return 0;
 
 	case IDM_CALCULATE_JULIA_AVX32:
-		put_CalcPlatform(FractalType::Julia, CalcPlatform::AVX32);
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::AVX32);
 		PostCalc(FractalType::Julia);
 		return 0;
 
 	case IDM_CALCULATE_JULIA_AVX64:	// fall through
-		put_CalcPlatform(FractalType::Julia, CalcPlatform::AVX64);
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::AVX64);
 		PostCalc(FractalType::Julia);
 		return 0;
 
 	case IDM_CALCULATE_JULIA_OPENCL_CPU:
-		put_CalcPlatform(FractalType::Julia, CalcPlatform::OpenCL_CPU);
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::OpenCL_CPU);
 		PostCalc(FractalType::Julia);
 		break;
 
 	case IDM_CALCULATE_JULIA_OPENCL_GPU:
-		put_CalcPlatform(FractalType::Julia, CalcPlatform::OpenCL_GPU);
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::OpenCL_GPU);
+		PostCalc(FractalType::Julia);
+		break;
+
+	case IDM_CALCULATE_SIN_JULIA_OPENCL_CPU:
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormSin, CalcPlatform::OpenCL_CPU);
+		PostCalc(FractalType::Julia);
+		break;
+
+	case IDM_CALCULATE_SIN_JULIA_OPENCL_GPU:
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormSin, CalcPlatform::OpenCL_GPU);
+		PostCalc(FractalType::Julia);
+		break;
+
+	case IDM_CALCULATE_COS_JULIA_OPENCL_CPU:
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormCos, CalcPlatform::OpenCL_CPU);
+		PostCalc(FractalType::Julia);
+		break;
+
+	case IDM_CALCULATE_COS_JULIA_OPENCL_GPU:
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormCos, CalcPlatform::OpenCL_GPU);
+		PostCalc(FractalType::Julia);
+		break;
+
+	case IDM_CALCULATE_EXP_JULIA_OPENCL_CPU:
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormExp, CalcPlatform::OpenCL_CPU);
+		PostCalc(FractalType::Julia);
+		break;
+
+	case IDM_CALCULATE_EXP_JULIA_OPENCL_GPU:
+		put_CalcPlatform(FractalType::Julia, FractalFormula::FormExp, CalcPlatform::OpenCL_GPU);
 		PostCalc(FractalType::Julia);
 		break;
 
@@ -1368,14 +1415,14 @@ bool CJuliasmApp::put_OCLDeviceType(COpenCLImage *ocl, cl_device_type oclDeviceT
 	return true;
 }
 
-bool CJuliasmApp::put_CalcPlatform(FractalType ft, CalcPlatform cp)
+bool CJuliasmApp::put_CalcPlatform(FractalType ft, FractalFormula ff, CalcPlatform cp)
 {
 	// find the specified combination of FtactalType and CalcPlatform
 	int i;
 	TCalcInfo *ci, *found_ci;
 	for (i = 0, ci = m_ci, found_ci = NULL; i < sizeof(m_ci) / sizeof(m_ci[0]); ++i, ++ci)
 	{
-		if (ci->iFracType == ft && ci->iCalcPlatform == cp)
+		if (ci->iFracType == ft && ci->iFracFormula == ff && ci->iCalcPlatform == cp)
 		{
 			found_ci = ci;
 			break;
@@ -1388,11 +1435,12 @@ bool CJuliasmApp::put_CalcPlatform(FractalType ft, CalcPlatform cp)
 
 	// setup the calculation variables
 	m_CalcPlatform[ft]			= found_ci->iCalcPlatform;
+	m_FractalFormula[ft]		= found_ci->iFracFormula;
 	m_CalcCompleteMessage[ft]	= found_ci->iThreadCompleteMessage;
 	m_CalcCompleteWParam[ft]	= found_ci->iThreadCompleteWParam;
 	m_CalcCompleteLParam[ft]	= MAKELPARAM((WORD)ft, (WORD)cp);
 	m_iCalcThreadCount[ft]		= found_ci->iThreadCount;
-	m_pCalculateFunc[ft]			= found_ci->pCalculateMandFunc;
+	m_pCalculateFunc[ft]		= found_ci->pCalculateMandFunc;
 	m_iCalcKernel[ft]			= found_ci->iOCLKernelNumber;
 
 	// update the OpenCL objects with the desired device type

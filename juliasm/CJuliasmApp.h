@@ -52,6 +52,13 @@ enum FractalType {
 	Julia,
 	NUMBER_FRACTAL_TYPES,
 };
+enum FractalFormula {
+	FormMand,
+	FormSin,
+	FormCos,
+	FormExp,
+	NUMBER_FRACTAL_FORMULAS,
+};
 
 //
 // Structure used to define the various possible fractal calculations.
@@ -60,6 +67,7 @@ enum FractalType {
 //
 struct TCalcInfo {
 	FractalType iFracType;			// type of fractal (e.g. Mand / Julia)
+	FractalFormula iFracFormula;	// Mandelbrot, sin, cos, exp, ...
 	CalcPlatform iCalcPlatform;		// calculation platform (e.g. x87, AVX...)
 	int iThreadCount;				// number of threads to start
 	DWORD (WINAPI *pCalculateMandFunc)(void* pArguments);	// calculation function
@@ -90,6 +98,7 @@ class CJuliasmApp : public CApplication {
 	// Color Palette
 	//
 	 CPalette m_PaletteDefault;
+	 CPalette m_PaletteZebra;
 
 	 //
 	 // CPU feature identification
@@ -140,6 +149,7 @@ class CJuliasmApp : public CApplication {
 	TThreadInfo		m_ThreadInfo[FractalType::NUMBER_FRACTAL_TYPES][MAX_CPU_THREADS];
 
 	CalcPlatform	m_CalcPlatform[NUMBER_FRACTAL_TYPES];
+	FractalFormula	m_FractalFormula[NUMBER_FRACTAL_FORMULAS];
 
 	bool StartCalc(FractalType ft);
 	void PostCalc(FractalType ft);
@@ -150,7 +160,7 @@ class CJuliasmApp : public CApplication {
 	char *get_CalcPlatformName(char *szBuf, size_t iLen, CalcPlatform cp);
 
 	inline CalcPlatform get_CalcPlatform(FractalType fracType) const { return m_CalcPlatform[fracType];	}
-	bool put_CalcPlatform(FractalType ft, CalcPlatform cp);
+	bool put_CalcPlatform(FractalType ft, FractalFormula ff, CalcPlatform cp);
 
 	void put_MaxIterationsMand(int iMaxIterationsMand);
 	inline int get_MaxIterationsMand(void) const { return this->m_iMaxIterationsMand; }

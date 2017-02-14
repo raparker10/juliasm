@@ -40,6 +40,33 @@ COLORREF CPalette::get_Color(int iPaletteEntry)
 {
 	return l_Colors[iPaletteEntry % 255];
 }
+COLORREF CPalette::get_Color(float fPaletteEntry)
+{
+	int iCol1 = (int)trunc(fPaletteEntry) % MAX_COLORS;
+	int iCol2 = (iCol1 + 1) % MAX_COLORS;
+
+	float col2pct = fPaletteEntry - trunc(fPaletteEntry);
+	float col1pct = 1.0 - col2pct;
+
+	int Red1 = l_Colors[iCol1] & 0x0FF;
+	int Green1 = (l_Colors[iCol1] >> 8) & 0x0FF;
+	int Blue1 = (l_Colors[iCol1] >> 16) & 0x0FF;
+
+	int Red2 = l_Colors[iCol2] & 0x0FF;
+	int Green2 = (l_Colors[iCol2] >> 8) & 0x0FF;
+	int Blue2 = (l_Colors[iCol2] >> 16) & 0x0FF;
+
+	if (Red1 > 0)
+		Red1 = Red1;
+
+	int Red = min(MAX_COLORS - 1, Red1 * col1pct + Red2 * col2pct);
+	int Green = min(MAX_COLORS - 1, Green1 * col1pct + Green2 * col2pct);
+	int Blue = min(MAX_COLORS - 1, Blue1 * col1pct + Blue2 * col2pct);
+
+	COLORREF c = RGB(Red, Green, Blue);
+	return c;
+}
+		
 void CPalette::UpdateColors(void)
 {
 	if (l_bDirty == false)
@@ -123,3 +150,13 @@ CPalette & CPalette::operator=(const CPalette &p)
 	return *this;
 }
 
+CPaletteZebra::CPaletteZebra() : CPalette()
+{
+}
+CPaletteZebra::~CPaletteZebra()
+{
+}
+
+void CPaletteZebra::UpdateColors(void)
+{
+}

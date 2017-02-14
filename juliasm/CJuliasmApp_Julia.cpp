@@ -741,7 +741,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaOpenCL(void* pArguments)
 
 	// Execute the calculation
 	cl_int error;
-	if (false == pApp->m_OCLJulia.ExecuteProgram(0, &error))
+	if (false == pApp->m_OCLJulia.ExecuteProgram(pThreadInfo->iKernelNumber, &error))
 	{
 		char szBuf[64];
 		sprintf_s(szBuf, _countof(szBuf), "Error %d executing OpenCL kernel.", error);
