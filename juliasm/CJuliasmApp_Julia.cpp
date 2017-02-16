@@ -27,7 +27,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaX87(void* pArguments)
 	QueryPerformanceCounter(&tStart);
 
 	// determine how much of the image this thread will calculate
-	double fThreadHeight = (pApp->m_jc2 - pApp->m_jc1) / pApp->m_iCalcThreadCount[FractalType::Julia];
+	double fThreadHeight = (pApp->m_jc2 - pApp->m_jc1) / pThreadInfo->pCalcInfo->iThreadCount;
 
 	double
 		a = pApp->m_ja,
@@ -40,7 +40,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaX87(void* pArguments)
 	// get the bitmap bits
 	unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpFractal[FractalType::Julia].get_bmpBits();
 
-	int pixelHeight = pApp->get_JuliaHeight() / pApp->m_iCalcThreadCount[FractalType::Julia];
+	int pixelHeight = pApp->get_JuliaHeight() / pThreadInfo->pCalcInfo->iThreadCount;
 	int starty = iThreadIndex * pixelHeight;
 	int endy = starty + pixelHeight;
 
@@ -86,8 +86,8 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaX87(void* pArguments)
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThreadInfo->iThreadCompleteMessage, 
-		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
 		pThreadInfo->iThreadCompleteLParam);
 
 	return 0;
@@ -136,7 +136,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX32(void* pArguments)
 	// to simplify code
 	volatile __declspec(align(32)) int 
 			x, y,										// current x, and y locations
-			num_threadsi = pApp->m_iCalcThreadCount[FractalType::Julia],	// the number of worker threads (needed to chop up the problem per thread)
+			num_threadsi = pThreadInfo->pCalcInfo->iThreadCount,	// the number of worker threads (needed to chop up the problem per thread)
 			width_pixi = pApp->get_JuliaWidth(),			// the screen width in pixels
 			height_pixi = pApp->get_JuliaHeight();			// the screen height in pixels
 
@@ -250,8 +250,8 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX32(void* pArguments)
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThreadInfo->iThreadCompleteMessage, 
-		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
 		pThreadInfo->iThreadCompleteLParam);
 
 	// end the function.  we should never get here
@@ -295,7 +295,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX64(void* pArguments)
 	// to simplify code
 	volatile __declspec(align(32)) int 
 			x, y,										// current x, and y locations
-			num_threadsi = pApp->m_iCalcThreadCount[FractalType::Julia],	// the number of worker threads (needed to chop up the problem per thread)
+			num_threadsi = pThreadInfo->pCalcInfo->iThreadCount,	// the number of worker threads (needed to chop up the problem per thread)
 			width_pixi = pApp->get_JuliaWidth(),			// the screen width in pixels
 			height_pixi = pApp->get_JuliaHeight();			// the screen height in pixels
 
@@ -404,8 +404,8 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaAVX64(void* pArguments)
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThreadInfo->iThreadCompleteMessage, 
-		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
 		pThreadInfo->iThreadCompleteLParam);
 
 	// end the function.  we should never get here
@@ -448,7 +448,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE(void* pArguments)
 	// to simplify code
 	volatile __declspec(align(16)) int 
 			x, y,										// current x, and y locations
-			num_threadsi = pApp->m_iCalcThreadCount[FractalType::Julia],	// the number of worker threads (needed to chop up the problem per thread)
+			num_threadsi = pThreadInfo->pCalcInfo->iThreadCount,	// the number of worker threads (needed to chop up the problem per thread)
 			width_pixi = pApp->get_JuliaWidth(),			// the screen width in pixels
 			height_pixi = pApp->get_JuliaHeight();			// the screen height in pixels
 
@@ -561,8 +561,8 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE(void* pArguments)
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThreadInfo->iThreadCompleteMessage, 
-		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
 		pThreadInfo->iThreadCompleteLParam);
 
 	return 0;
@@ -600,7 +600,7 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE2(void* pArguments)
 	// to simplify code
 	volatile __declspec(align(16)) int 
 			x, y,										// current x, and y locations
-			num_threadsi = pApp->m_iCalcThreadCount[FractalType::Julia],	// the number of worker threads (needed to chop up the problem per thread)
+			num_threadsi = pThreadInfo->pCalcInfo->iThreadCount,	// the number of worker threads (needed to chop up the problem per thread)
 			width_pixi = pApp->get_JuliaWidth(),			// the screen width in pixels
 			height_pixi = pApp->get_JuliaHeight();			// the screen height in pixels
 
@@ -713,8 +713,8 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaSSE2(void* pArguments)
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThreadInfo->iThreadCompleteMessage, 
-		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
 		pThreadInfo->iThreadCompleteLParam);
 	// end the function.  we should never get here
 	return 0;
@@ -727,8 +727,8 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaFMA(void* pArguments)
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThreadInfo->iThreadCompleteMessage, 
-		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
 		pThreadInfo->iThreadCompleteLParam);
 
 	return 0;
@@ -739,9 +739,13 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaOpenCL(void* pArguments)
 	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
 	CJuliasmApp *pApp = pThreadInfo->pApp;
 
+	int iDeviceIndex = pApp->m_OCLFrac.get_DeviceIndexByType(pThreadInfo->pCalcInfo->iOCLDeviceType);
+	if (iDeviceIndex < 0)
+		return 0;
+
 	// Execute the calculation
 	cl_int error;
-	if (false == pApp->m_OCLJulia.ExecuteProgram(pThreadInfo->iKernelNumber, &error))
+	if (false == pApp->m_OCLFrac.ExecuteProgramJulia(iDeviceIndex, pThreadInfo->pCalcInfo->iOCLKernelNumber, pThreadInfo->pCalcInfo->iOCLImageIndex, &error))
 	{
 		char szBuf[64];
 		sprintf_s(szBuf, _countof(szBuf), "Error %d executing OpenCL kernel.", error);
@@ -752,8 +756,8 @@ DWORD WINAPI CJuliasmApp::CalculateJuliaOpenCL(void* pArguments)
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThreadInfo->iThreadCompleteMessage, 
-		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
 		pThreadInfo->iThreadCompleteLParam);
 
 	return 0;

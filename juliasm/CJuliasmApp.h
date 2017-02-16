@@ -6,26 +6,32 @@
 //
 
 class CJuliasmApp;
+struct TCalcInfo;
 
 
 //
 //  Stores information to be passed to and from each individual calculation thread
 //
 struct TThreadInfo {
+	TCalcInfo *pCalcInfo;
+
 	// inputs
 	int iThreadIndex;			// unique thread id.  starts at zero and increases by one
+//	int iImageIndex;			// which image will be used by the thread
 	class CJuliasmApp *pApp;		// pointer to the application object. enables reaching back into the application variables
 
 	// Thread complete message
-	UINT iThreadCompleteMessage;	// message that will be sent to the message queue when the thread is complere
-	WPARAM iThreadCompleteWParam;	// WPARAM of message sent to host when thread is complete
+//	UINT iThreadCompleteMessage;	// message that will be sent to the message queue when the thread is complere
+//	WPARAM iThreadCompleteWParam;	// WPARAM of message sent to host when thread is complete
 	LPARAM iThreadCompleteLParam;	// LPARAM of message sent to host when thread is complete
-	int iKernelNumber;				// OpenCL kerel number to execute within program
+//	int iKernelNumber;				// OpenCL kerel number to execute within program
+//	cl_device_type iOCLDeviceType;	// OpenCL device type
 
 	// outputs
 	cl_int oclError;				// Status code returned by the OpenCL kernel exeution
 };
-
+#define IMAGE_MAND	0
+#define IMAGE_JULIA	1
 //
 // The types of computational resources used to perform calculations
 enum CalcPlatform {
@@ -70,11 +76,12 @@ struct TCalcInfo {
 	FractalFormula iFracFormula;	// Mandelbrot, sin, cos, exp, ...
 	CalcPlatform iCalcPlatform;		// calculation platform (e.g. x87, AVX...)
 	int iThreadCount;				// number of threads to start
-	DWORD (WINAPI *pCalculateMandFunc)(void* pArguments);	// calculation function
+	DWORD (WINAPI *pCalculateFunc)(void* pArguments);	// calculation function
 	UINT iThreadCompleteMessage;	// message to pass when complete
 	WPARAM iThreadCompleteWParam;	// wParam to pass when complere
-	cl_device_type	oclDeviceType;	// CPU, GPU, etc...
+	cl_device_type	iOCLDeviceType;	// CPU, GPU, etc...
 	int iOCLKernelNumber;			// which OCL kernel to use 
+	int iOCLImageIndex;
 };
 
 class CJuliasmApp : public CApplication {
@@ -84,6 +91,8 @@ class CJuliasmApp : public CApplication {
 	void Initialize(void);
 	void InitializeMand(void);
 	void InitializeJulia(void);
+
+	void SetupOCLOptions(bool bOCLAvailable);
 
 
 	//
@@ -134,32 +143,42 @@ class CJuliasmApp : public CApplication {
 	//
 	const int			THREAD_STACK_SIZE = 1024;
 	static TCalcInfo	m_ci[];
+	TCalcInfo			*m_pCalcInfo[FractalType::NUMBER_FRACTAL_TYPES]; // points to the current calculation info in m_ci[], above
+	TCalcInfo *get_CalcInfo(FractalType ft, FractalFormula ff, CalcPlatform cp);
 
-	DWORD (WINAPI		*m_pCalculateFunc[FractalType::NUMBER_FRACTAL_TYPES])(void* pArguments);
 
-	UINT	m_CalcCompleteMessage[FractalType::NUMBER_FRACTAL_TYPES];
-	WPARAM	m_CalcCompleteWParam[FractalType::NUMBER_FRACTAL_TYPES];
-	LPARAM	m_CalcCompleteLParam[FractalType::NUMBER_FRACTAL_TYPES];
+//	DWORD (WINAPI		*m_pCalculateFunc[FractalType::NUMBER_FRACTAL_TYPES])(void* pArguments);
 
-	int				m_iCalcKernel[FractalType::NUMBER_FRACTAL_TYPES];
+//	UINT	m_CalcCompleteMessage[FractalType::NUMBER_FRACTAL_TYPES];
+//	WPARAM	m_CalcCompleteWParam[FractalType::NUMBER_FRACTAL_TYPES];
+//	LPARAM	m_CalcCompleteLParam[FractalType::NUMBER_FRACTAL_TYPES];
+
+//	int				m_iCalcKernel[FractalType::NUMBER_FRACTAL_TYPES];
+//	cl_device_type	m_iOCLDeviceType[FractalType::NUMBER_FRACTAL_TYPES];
 
 	volatile LONG	m_iCalculatingFractal[FractalType::NUMBER_FRACTAL_TYPES];
 	HANDLE			m_hThread[FractalType::NUMBER_FRACTAL_TYPES][MAX_CPU_THREADS];
-	LONG			m_iCalcThreadCount[FractalType::NUMBER_FRACTAL_TYPES];
+//	LONG			m_iCalcThreadCount[FractalType::NUMBER_FRACTAL_TYPES];
 	TThreadInfo		m_ThreadInfo[FractalType::NUMBER_FRACTAL_TYPES][MAX_CPU_THREADS];
 
+//	int m_iImageIndex[FractalType::NUMBER_FRACTAL_TYPES];
 	CalcPlatform	m_CalcPlatform[NUMBER_FRACTAL_TYPES];
-	FractalFormula	m_FractalFormula[NUMBER_FRACTAL_FORMULAS];
+//	FractalFormula	m_FractalFormula[NUMBER_FRACTAL_FORMULAS];
 
 	bool StartCalc(FractalType ft);
 	void PostCalc(FractalType ft);
 	void PostCalcAll(void);
 
-	bool put_OCLDeviceType(COpenCLImage *ocl, cl_device_type oclDeviceType, int iImageWidth, int iImageHeight);
-	cl_device_type get_OCLDeviceType(COpenCLImage *ocl) const { return ocl->get_CurrentDeviceType(); }
+	bool put_OCLDeviceType(COpenCLImage *ocl, cl_device_type oclDeviceType, int iKernelIndex, int iImageIndex, int iImageWidth, int iImageHeight);
+	cl_device_type get_OCLDeviceType(COpenCLImage *ocl, int iKernelIndex) const { 
+		return ocl->get_CurrentDeviceTypeByKernel(iKernelIndex); 
+	}
 	char *get_CalcPlatformName(char *szBuf, size_t iLen, CalcPlatform cp);
 
-	inline CalcPlatform get_CalcPlatform(FractalType fracType) const { return m_CalcPlatform[fracType];	}
+	inline CalcPlatform get_CalcPlatform(FractalType fracType) const { 
+		assert(fracType == FractalType::Julia || fracType == FractalType::Mand);
+		return m_pCalcInfo[fracType]->iCalcPlatform;	
+	}
 	bool put_CalcPlatform(FractalType ft, FractalFormula ff, CalcPlatform cp);
 
 	void put_MaxIterationsMand(int iMaxIterationsMand);
@@ -239,7 +258,7 @@ class CJuliasmApp : public CApplication {
 	//
 	// screen layout functions for the Mandelbrot Set
 	//
-	COpenCLMand		m_OCLMand;
+	COpenCLFrac		m_OCLFrac;
 	RECT			m_rcMand;
 	int				_m_iMandHeight, _m_iMandWidth;
 	double			m_a1, m_a2, m_b1, m_b2; // numerical bounding box
@@ -247,25 +266,25 @@ class CJuliasmApp : public CApplication {
 
 	inline int get_MandHeight(void) const { return _m_iMandHeight; }
 	inline int get_MandWidth(void) const { return _m_iMandWidth; }
-	bool put_MandRect(int x1, int y1, int x2, int y2, bool bShow);
+	bool put_MandRect(int iImageIndex, int x1, int y1, int x2, int y2, bool bShow);
 
 	void ZoomInMand(int x, int y, float fAmount);
 	void ZoomInJulia(int x, int y, float fAmount);
 	//
 	// screen layout for the Julia Set
 	//
-	COpenCLJulia	m_OCLJulia;
+//	COpenCLJulia	m_OCLJulia;
 	RECT			m_rcJulia;
 	int				_m_iJuliaHeight, _m_iJuliaWidth;
 	inline int get_JuliaHeight(void) const { return _m_iJuliaHeight; }
 	inline int get_JuliaWidth(void) const { return _m_iJuliaWidth; }
-	bool put_JuliaRect(int x1, int y1, int x2, int y2, bool bShow);
-	bool put_JuliaPoint(double a, double b) {
+	bool put_JuliaRect(int iImageIndex, int x1, int y1, int x2, int y2, bool bShow);
+	bool put_JuliaPoint(int iKernelIndex, double a, double b) {
 		if (m_bUpdateJulia) {
 			m_ja = a;
 			m_jb = b;
 			// update the OpenCL object as well
-			m_OCLJulia.put_ConstPoint((float)m_ja, (float)m_jb);
+			m_OCLFrac.put_ConstPoint(iKernelIndex, (float)m_ja, (float)m_jb);
 			return true;
 		}
 		return false;

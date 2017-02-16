@@ -1,7 +1,7 @@
 /* This is a test */
 constant sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 
-
+/* Kernel 0 */
 __kernel void image_mandelbrot(write_only image2d_t image, read_only float4 num_rect, read_only float maxi, __global __read_only float4 *palette)
 {
 	int offset_x = get_global_id(0), 
@@ -41,6 +41,8 @@ __kernel void image_mandelbrot(write_only image2d_t image, read_only float4 num_
 
 	write_imagef(image, (int2)(offset_x, offset_y), color);
 }
+
+/* Kernel 1 */
 
 __kernel void image_julia(write_only image2d_t image, read_only float2 pt, read_only float4 num_rect, read_only float maxi, __global __read_only float4 *palette)
 {
@@ -128,6 +130,8 @@ __kernel void image_julia(write_only image2d_t image, read_only float2 pt, read_
 
 
 */
+/* Kernel 2 */
+
 __kernel void image_mandelbrot_worksize(write_only image2d_t image, read_only float4 num_rect, read_only float maxi, __global __read_only float4 *palette)
 {
 	int offset_x = get_global_id(0), 
@@ -167,6 +171,9 @@ __kernel void image_mandelbrot_worksize(write_only image2d_t image, read_only fl
 
 	write_imagef(image, (int2)(offset_x, offset_y), color);
 }
+
+/* Kernel 3 */
+
 __kernel void image_mandelbrot_nopal(
 	write_only image2d_t image, 
 	__private read_only float a1, 
@@ -210,6 +217,9 @@ __kernel void image_mandelbrot_nopal(
 
 	write_imagef(image, (int2)(offset_x, offset_y), color);
 }
+
+/* Kernel 4 */
+
 __kernel void image_juliasin(write_only image2d_t image, read_only float2 pt, read_only float4 num_rect, read_only float maxi, __global __read_only float4 *palette)
 {
 	int offset_x = get_global_id(0), 
@@ -256,6 +266,8 @@ __kernel void image_juliasin(write_only image2d_t image, read_only float2 pt, re
 	write_imagef(image, (int2)(offset_x, offset_y), color);
 }
 
+/* Kernel 5 */
+
 __kernel void image_juliacos(write_only image2d_t image, read_only float2 pt, read_only float4 num_rect, read_only float maxi, __global __read_only float4 *palette)
 {
 	int offset_x = get_global_id(0), 
@@ -293,6 +305,9 @@ __kernel void image_juliacos(write_only image2d_t image, read_only float2 pt, re
 
 	write_imagef(image, (int2)(offset_x, offset_y), color);
 }
+
+/* Kernel 6 */
+
 __kernel void image_juliaexp(write_only image2d_t image, read_only float2 pt, read_only float4 num_rect, read_only float maxi, __global __read_only float4 *palette)
 {
 	int offset_x = get_global_id(0), 
@@ -329,6 +344,67 @@ __kernel void image_juliaexp(write_only image2d_t image, read_only float2 pt, re
 	}
 
 	color = palette[iColor];
+
+	write_imagef(image, (int2)(offset_x, offset_y), color);
+}
+
+/* Kernel 7 */
+
+__kernel void image_mandelbrot_smooth(write_only image2d_t image, read_only float4 num_rect, read_only float maxi, __global __read_only float4 *palette)
+{
+	int offset_x = get_global_id(0), 
+		offset_y = get_global_id(1);
+
+	uint width = get_image_width(image);
+	uint height = get_image_height(image);
+
+	float a1 = num_rect.x, // -2.0f, 
+		a2 = num_rect.z, // 2.0f		
+		b1 = num_rect.y, // -2.0f, 
+		b2 = num_rect.w, // 2.0f,
+		da = (a2 - a1) / width,
+		db = (b2 - b1) / height;
+
+	float a, b, c, c2, d;
+	c = d = 0.0f;
+	a = a1 + da * offset_x;
+	b = b1 + db * offset_y;
+
+	float4 color;
+
+	int i_maxi = (int)maxi;
+	int i;
+	unsigned char iColor;
+	for (i = 0, iColor=0; i < i_maxi; ++i, ++iColor)
+	{
+		float c2 = c * c;
+		float d2 = d * d;
+		float mag =  c2 + d2;
+		if (mag > 40.0f)
+		{
+			float _mc = log(sqrt(mag));
+			float _cc;
+			if (_mc > 0.0f)
+				_cc = log(_mc);
+			else
+				_cc = log(-_mc);
+
+			float fColor = i + 1.0f - _cc / log(2.0f);
+			int icolor_low = floor(fColor);
+			int icolor_high = icolor_low + 1;
+			float4 color_low = palette[icolor_low];
+			float4 color_high = palette[icolor_high];
+			float high_pct = fColor - icolor_low;
+			color_low =  color_low * (1.0f - high_pct);
+			color_high = color_high * high_pct;
+			color = color_low + color_high;
+//			color = palette[iColor];
+			break;
+		}
+		c2 = 2 * c * d;
+		c = c * c - d * d + a;
+		d = c2 + b;
+	}
 
 	write_imagef(image, (int2)(offset_x, offset_y), color);
 }

@@ -2,9 +2,12 @@
 
 COpenCLImage::COpenCLImage()
 {
-	m_Image = (cl_mem)CL_INVALID_MEM_OBJECT;
-	m_iWidth = m_iHeight = 0;
-	m_iNumberPaletteColors = 0;
+	for (int i = 0 ; i < MAX_IMAGES; ++i)
+	{
+		m_Image[i] = (cl_mem)CL_INVALID_MEM_OBJECT;
+		m_iImageWidth[i] = m_iImageHeight[i] = 0;
+	}
+		m_iNumberPaletteColors = 0;
 }
 
 // object constructor
@@ -24,6 +27,10 @@ bool COpenCL::Initialize(void)
 {
 	int i;
 
+	m_iPlatformsReady = 0;
+	m_iKernelsReady = 0; // indicate that Kernels are not yet ready for execution
+	m_iDevicesReady = 0;
+
 	// initialzie platform variables
 	m_iCurrentPlatformIndex = -1;		// which OpenCL platform is currently being used
 	m_iNumberPlatforms = 0;				// the total number of OpenCL platforms
@@ -33,13 +40,21 @@ bool COpenCL::Initialize(void)
 	}
 	memset(m_szPlatformName, 0, sizeof(m_szPlatformName));
 	
+	// initialize kernel variables
+	for (i = 0; i < _countof(m_iCurrentDeviceIndex); ++i)
+	{
+		m_iCurrentDeviceIndex[i] = -1;
+
+	}
+
 	// initialize device variables
-	m_iCurrentDeviceIndex = -1;			// current OpenCL device.  this is an index into the following arrays
 	m_iNumberDevices = 0;			// the total number of OpenCL devices for the current platform
 	for (i = 0; i  < MAX_DEVICES; ++i)
 	{
 		m_DeviceID[i] = (cl_device_id)CL_INVALID_DEVICE; // OpenCL device IDs for the current platform
 		m_DeviceType[i] = (cl_device_type)CL_INVALID_DEVICE_TYPE;	// OpenCL device types for the current platform (eg CPU, GPU, ...)
+		// command queue variables
+		m_CommandQueue[i] = (cl_command_queue)CL_INVALID_COMMAND_QUEUE;	// command queue for the current program
 	}
 	memset(m_szDeviceName, 0, sizeof(m_szDeviceName));
 
@@ -56,8 +71,6 @@ bool COpenCL::Initialize(void)
 	memset(m_KernelAttributes, 0, sizeof(m_KernelAttributes));
 	memset(m_szKernelName, 0, sizeof(m_szKernelName));	
 
-	// command queue variables
-	m_CommandQueue = (cl_command_queue)CL_INVALID_COMMAND_QUEUE;	// command queue for the current program
 
 	return true;
 }
@@ -103,6 +116,7 @@ int COpenCL::BuildPlatformList(void)
 
 	// save (and then return) the platform count
 	m_iNumberPlatforms = num_platforms;
+	put_PlatformsReady(num_platforms > 0);
 
 	return m_iNumberPlatforms;
 }
@@ -110,6 +124,7 @@ int COpenCL::BuildPlatformList(void)
 // selects the specified OpenCL platform for use`
 bool COpenCL::UsePlatformByID(cl_platform_id platform_id)
 {
+	assert(get_PlatformsReady());
 	int iIndex = get_PlatformIndex(platform_id);
 	if (iIndex < 0)
 		return false;
@@ -125,6 +140,8 @@ int COpenCL::BuildDeviceList(int iPlatformIndex)
 {
 	cl_int error;
 	size_t iSize;
+
+	assert(get_PlatformsReady());
 
 	// bail if the platform is not valid
 	if (iPlatformIndex < 0 || iPlatformIndex >= m_iNumberPlatforms)
@@ -152,29 +169,33 @@ int COpenCL::BuildDeviceList(int iPlatformIndex)
 
 	// return the number of devices found
 	m_iNumberDevices = num_devices;
+	put_DevicesReady(num_devices > 0);
 	return m_iNumberDevices;
 
 }
 
 // select an OpenCL device for use by it's OpenCL device ID
-bool COpenCL::UseDeviceByID(cl_device_id device_id)
+bool COpenCL::UseDeviceByID(int iKernelIndex, cl_device_id device_id)
 {
+	assert(get_DevicesReady());
 	int iIndex = get_DeviceIndex(device_id);
 	if (iIndex < 0)
 		return false;
 
-	m_iCurrentDeviceIndex = iIndex;
+	m_iCurrentDeviceIndex[iKernelIndex] = iIndex;
 	return true;
 }
 
 // select an OpenCL device for use by it's OpenCL device type 
-bool COpenCL::UseDeviceByType(cl_device_type device_type)
+bool COpenCL::UseDeviceByType(int iKernelIndex, cl_device_type device_type)
 {
+	assert(get_DevicesReady());
+
 	for (int i = 0; i < get_DeviceCount(); ++i)
 	{
 		if (m_DeviceType[i] == device_type)
 		{
-			return UseDeviceByIndex(i);
+			return UseDeviceByIndex(iKernelIndex, i);
 		}
 	}
 	return false;
@@ -250,13 +271,112 @@ bool COpenCL::LoadProgram(char * szProgramPath, bool bUseProgramPath)
 	return m_szProgramText[0] != NULL;
 }
 
-// prepare the OpenCL program for use
-bool COpenCL::PrepareProgram(void)
+DWORD WINAPI COpenCL::PrepareProgramAsyncWorker(void* pOCL)
 {
+	COpenCL *ocl = (COpenCL*)pOCL;
+
+	// first, cleanup any existing program
+	ocl->CleanupProgram();
+
+	cl_int error;
+	bool bAnyBuildFailed = false;
+
+	// create a Context for the Program
+	ocl->m_Context = clCreateContext(NULL, ocl->get_DeviceCount(), ocl->m_DeviceID, NULL, NULL, &error);
+	if (error == CL_SUCCESS)
+	{
+		ocl->m_Program = clCreateProgramWithSource(ocl->m_Context, 1, (const char **)ocl->m_szProgramText, ocl->m_iProgramLength, &error);
+		if (error == CL_SUCCESS)
+		{
+			// build the program for the CURRENT device
+//			cl_int build_error = clBuildProgram(m_Program, 1, &m_DeviceID[m_iCurrentDeviceIndex],	"-s \"C:/Users/Robert/Documents/Visual Studio 2013/Projects/juliasm/fractals.cl\"", NULL, NULL);
+			//
+			// build the program separately for each device.  This enables using different compile options
+			//	for different device type (e.g. double with the CPU device)
+			//
+			for (int dev = 0; dev < ocl->get_DeviceCount(); ++dev)
+			{
+				cl_int build_error = clBuildProgram(ocl->m_Program, 1, &ocl->m_DeviceID[dev],	NULL, NULL, NULL);
+				ocl->m_iLastBuildStatus[dev] = build_error;
+
+				// get the build log for the CURRENT device
+				size_t size_ret;
+//				int d = m_iCurrentDeviceIndex;
+
+				// get the build log
+				error = clGetProgramBuildInfo(ocl->m_Program, ocl->m_DeviceID[dev], CL_PROGRAM_BUILD_LOG, 0, NULL, &size_ret);
+				if (error == CL_SUCCESS)
+				{
+					char *ptr = (char*)calloc(size_ret + 1, 1);
+					if (ptr != NULL)
+					{
+						error = clGetProgramBuildInfo(ocl->m_Program, ocl->m_DeviceID[dev], CL_PROGRAM_BUILD_LOG, size_ret, ptr, &size_ret);
+						if (size_ret > 0)
+						{
+							ocl->put_LastBuildMessage(dev, ptr);
+						}
+						else
+						{
+							ocl->put_LastBuildMessage(dev, "");
+						}
+						free(ptr);
+					}
+					ocl->m_CommandQueue[dev] = clCreateCommandQueue(ocl->m_Context, ocl->m_DeviceID[dev], 0, &error);
+
+				}
+				bAnyBuildFailed = bAnyBuildFailed || (build_error != CL_SUCCESS);
+			}
+
+			if (bAnyBuildFailed == false)
+			{
+				error = clCreateKernelsInProgram(ocl->m_Program, MAX_KERNELS, ocl->m_Kernel, &ocl->m_iNumberKernels);
+				if (error == CL_SUCCESS)
+				{
+					int i;
+	
+					ocl->put_KernelsReady(true);
+
+					// get information for each kernel
+					for (i = 0; i < ocl->get_KernelCount(); ++i)
+					{
+
+						size_t ret_size;
+
+						clGetKernelInfo(ocl->m_Kernel[i], CL_KERNEL_FUNCTION_NAME, sizeof(ocl->m_szKernelName[i]), &ocl->m_szKernelName[i], &ret_size);
+						clGetKernelInfo(ocl->m_Kernel[i], CL_KERNEL_NUM_ARGS, sizeof(ocl->m_KernelNumberArgs[i]), &ocl->m_KernelNumberArgs[i], &ret_size);
+						clGetKernelInfo(ocl->m_Kernel[i], CL_KERNEL_ATTRIBUTES, sizeof(ocl->m_KernelAttributes[i]), &ocl->m_KernelAttributes[i], &ret_size);
+					}
+
+
+				}
+				ocl->put_KernelsReady(true);
+			}
+		}
+		int retval = ocl->PrepareProgramBuffers() ? 1 : 0;
+		PostMessage(ocl->m_hWndCallback, WM_COMMAND, ocl->m_wmIDCallback, retval);
+		return retval;
+	}
+	PostMessage(ocl->m_hWndCallback, WM_COMMAND, ocl->m_wmIDCallback, 0);
+	return 0; // false
+}
+
+// prepare the OpenCL program for use
+bool COpenCL::PrepareProgram(HWND hWndCallback, int wmIDCallback)
+{
+	assert(get_PlatformsReady());
+	assert(get_DevicesReady());
+
+	m_hWndCallback = hWndCallback;
+	m_wmIDCallback = wmIDCallback;
+
+	CreateThread(NULL, 1024 * 10, PrepareProgramAsyncWorker, (LPVOID)this, 0, NULL);
+	return true;
+
 	// first, cleanup any existing program
 	CleanupProgram();
 
 	cl_int error;
+	bool bAnyBuildFailed = false;
 
 	// create a Context for the Program
 	m_Context = clCreateContext(NULL, m_iNumberDevices, m_DeviceID, NULL, NULL, &error);
@@ -267,36 +387,44 @@ bool COpenCL::PrepareProgram(void)
 		{
 			// build the program for the CURRENT device
 //			cl_int build_error = clBuildProgram(m_Program, 1, &m_DeviceID[m_iCurrentDeviceIndex],	"-s \"C:/Users/Robert/Documents/Visual Studio 2013/Projects/juliasm/fractals.cl\"", NULL, NULL);
-			cl_int build_error = clBuildProgram(m_Program, 1, &m_DeviceID[m_iCurrentDeviceIndex],	NULL, NULL, NULL);
-			m_iLastBuildStatus = build_error;
-
-			// get the build log for the CURRENT device
-			char build_log[BUILD_LOG_LEN];
-			size_t size_ret;
-			int d = m_iCurrentDeviceIndex;
-
-			// get the build log
-			error = clGetProgramBuildInfo(m_Program, m_DeviceID[m_iCurrentDeviceIndex], CL_PROGRAM_BUILD_LOG, 0, NULL, &size_ret);
-			if (error == CL_SUCCESS)
+			//
+			// build the program separately for each device.  This enables using different compile options
+			//	for different device type (e.g. double with the CPU device)
+			//
+			for (int dev = 0; dev < this->m_iNumberDevices; ++dev)
 			{
-				char *ptr = (char*)calloc(size_ret + 1, 1);
-				if (ptr != NULL)
-				{
-					error = clGetProgramBuildInfo(m_Program, m_DeviceID[d], CL_PROGRAM_BUILD_LOG, size_ret, ptr, &size_ret);
-					if (size_ret > 0)
-					{
-						put_LastBuildMessage(ptr);
-					}
-					else
-					{
-						put_LastBuildMessage("");
-					}
-					free(ptr);
-				}
+				cl_int build_error = clBuildProgram(m_Program, 1, &m_DeviceID[dev],	NULL, NULL, NULL);
+				m_iLastBuildStatus[dev] = build_error;
 
+				// get the build log for the CURRENT device
+				size_t size_ret;
+//				int d = m_iCurrentDeviceIndex;
+
+				// get the build log
+				error = clGetProgramBuildInfo(m_Program, m_DeviceID[dev], CL_PROGRAM_BUILD_LOG, 0, NULL, &size_ret);
+				if (error == CL_SUCCESS)
+				{
+					char *ptr = (char*)calloc(size_ret + 1, 1);
+					if (ptr != NULL)
+					{
+						error = clGetProgramBuildInfo(m_Program, m_DeviceID[dev], CL_PROGRAM_BUILD_LOG, size_ret, ptr, &size_ret);
+						if (size_ret > 0)
+						{
+							put_LastBuildMessage(dev, ptr);
+						}
+						else
+						{
+							put_LastBuildMessage(dev, "");
+						}
+						free(ptr);
+					}
+					m_CommandQueue[dev] = clCreateCommandQueue(m_Context, m_DeviceID[dev], 0, &error);
+
+				}
+				bAnyBuildFailed = bAnyBuildFailed || (build_error != CL_SUCCESS);
 			}
 
-			if (build_error == CL_SUCCESS)
+			if (bAnyBuildFailed == false)
 			{
 				error = clCreateKernelsInProgram(m_Program, MAX_KERNELS, m_Kernel, &m_iNumberKernels);
 				if (error == CL_SUCCESS)
@@ -314,41 +442,50 @@ bool COpenCL::PrepareProgram(void)
 						clGetKernelInfo(m_Kernel[i], CL_KERNEL_ATTRIBUTES, sizeof(m_KernelAttributes[i]), &m_KernelAttributes[i], &ret_size);
 					}
 
-					m_CommandQueue = clCreateCommandQueue(m_Context, m_DeviceID[m_iCurrentDeviceIndex], 0, &error);
-
-
-					//
-					// execute each kernel on each device
-					//
-					return PrepareProgramBuffers();
 
 				}
+				put_KernelsReady(true);
 			}
 		}
+		return PrepareProgramBuffers();
 	}
 	return false;
 }
-bool COpenCLImage::put_ImageSize(int width, int height)
+bool COpenCLImage::put_ImageSize(int iBitmapIndex, int width, int height)
 {
 	cl_int error;
 
-	// release n existing mandelbrot image
-	if (m_Image != (cl_mem)CL_INVALID_MEM_OBJECT)
+	assert(get_BuffersReady());
+
+	if (false == get_BuffersReady())
 	{
-		clReleaseMemObject(m_Image);
-		m_Image = (cl_mem)CL_INVALID_MEM_OBJECT;
+		return false;
 	}
 
-	m_iHeight = height;
-	m_iWidth = width;
+		assert(iBitmapIndex >= 0 && iBitmapIndex < MAX_IMAGES);
+
+		if (iBitmapIndex < 0 || iBitmapIndex >= MAX_IMAGES)
+		{
+			return false;
+		}
+
+	// release n existing mandelbrot image
+	if (m_Image[iBitmapIndex] != (cl_mem)CL_INVALID_MEM_OBJECT)
+	{
+		clReleaseMemObject(m_Image[iBitmapIndex]);
+		m_Image[iBitmapIndex] = (cl_mem)CL_INVALID_MEM_OBJECT;
+	}
+
+	m_iImageHeight[iBitmapIndex] = height;
+	m_iImageWidth[iBitmapIndex] = width;
 
 	if (width == 0 || height == 0)
 		return true; // returns true, but there is no image
 
-	m_ImageFormat.image_channel_data_type = CL_UNORM_INT8;
-	m_ImageFormat.image_channel_order = CL_RGBA;
+	m_ImageFormat[iBitmapIndex].image_channel_data_type = CL_UNORM_INT8;
+	m_ImageFormat[iBitmapIndex].image_channel_order = CL_RGBA;
 
-	m_Image = clCreateImage2D(m_Context, CL_MEM_WRITE_ONLY, &m_ImageFormat, width, height, 0, NULL, &error);
+	m_Image[iBitmapIndex] = clCreateImage2D(m_Context, CL_MEM_WRITE_ONLY, &m_ImageFormat[iBitmapIndex], width, height, 0, NULL, &error);
 	if (error != CL_SUCCESS)
 	{
 		return false;
@@ -358,50 +495,76 @@ bool COpenCLImage::put_ImageSize(int width, int height)
 	return error == CL_SUCCESS;
 }
 
-bool COpenCLMand::PrepareProgramBuffers(void)
+bool COpenCLFrac::PrepareProgramBuffers(void)
 {
 	cl_int error;
+	int i;
 
-	m_ImageFormat.image_channel_data_type = CL_UNORM_INT8;
-	m_ImageFormat.image_channel_order = CL_RGBA;
+	assert(get_KernelsReady());
 
-	if (m_Image != (cl_mem)CL_INVALID_MEM_OBJECT)
+	for (i = 0; i < MAX_IMAGES; ++i)
 	{
-		clReleaseMemObject(m_Image);
-		m_Image = (cl_mem)CL_INVALID_MEM_OBJECT;
+		m_ImageFormat[i].image_channel_data_type = CL_UNORM_INT8;
+		m_ImageFormat[i].image_channel_order = CL_RGBA;
+
+		if (m_Image[i] != (cl_mem)CL_INVALID_MEM_OBJECT)
+		{
+			clReleaseMemObject(m_Image[i]);
+			m_Image[i] = (cl_mem)CL_INVALID_MEM_OBJECT;
+		}
+		m_Image[i] = clCreateImage2D(m_Context, CL_MEM_WRITE_ONLY, &m_ImageFormat[i], DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE, 0, NULL, &error);
+		if (error != CL_SUCCESS)
+			return false;
 	}
-	m_Image = clCreateImage2D(m_Context, CL_MEM_WRITE_ONLY, &m_ImageFormat, DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE, 0, NULL, &error);
-	if (error != CL_SUCCESS)
-		return false;
 
 	m_PaletteBuffer = clCreateBuffer(m_Context, CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY, sizeof(m_Palette), m_Palette, &error);
 	if (error != CL_SUCCESS)
 		return false;
-	error = clEnqueueWriteBuffer(m_CommandQueue, m_PaletteBuffer, CL_TRUE, 0, sizeof(m_PaletteBuffer), m_PaletteBuffer, 0, NULL, NULL);
+
+	// RAP: for now, all the images use the same palette.  this will evenually have to change
+	for (i = 0; i < m_iNumberDevices; ++i)
+	{
+		error = clEnqueueWriteBuffer(m_CommandQueue[i], m_PaletteBuffer, CL_TRUE, 0, sizeof(m_PaletteBuffer), m_PaletteBuffer, 0, NULL, NULL);
+	}
+
+	put_BuffersReady(true);
 
 	return true;
 }
 bool COpenCL::CleanupProgram(void)
 {
 	CleanupProgramBuffers();
+	put_BuffersReady(false);
 
 	cl_int error;
+	int i;
 
-	if (m_CommandQueue != (cl_command_queue)CL_INVALID_COMMAND_QUEUE)
+	if (get_DevicesReady())
 	{
-		error = clReleaseCommandQueue(m_CommandQueue);
-		m_CommandQueue = (cl_command_queue)CL_INVALID_COMMAND_QUEUE;
-	}
-
-	for (int i = 0; i < m_iNumberKernels; ++i)
-	{
-		if (m_Kernel[i] != (cl_kernel)CL_INVALID_KERNEL)
+		for (i = 0; i < get_DeviceCount(); ++i)
 		{
-			error = clReleaseKernel(m_Kernel[i]);
-			m_Kernel[i] = (cl_kernel)CL_INVALID_KERNEL;
-			m_iNumberKernels = 0;
+			if (m_CommandQueue[i] != (cl_command_queue)CL_INVALID_COMMAND_QUEUE)
+			{
+				error = clReleaseCommandQueue(m_CommandQueue[i]);
+				m_CommandQueue[i] = (cl_command_queue)CL_INVALID_COMMAND_QUEUE;
+			}
 		}
 	}
+
+	if (get_KernelsReady())
+	{
+		for (i = 0; i < get_KernelCount(); ++i)
+		{
+			if (m_Kernel[i] != (cl_kernel)CL_INVALID_KERNEL)
+			{
+				error = clReleaseKernel(m_Kernel[i]);
+				m_Kernel[i] = (cl_kernel)CL_INVALID_KERNEL;
+				m_iNumberKernels = 0;
+			}
+		}
+		put_KernelsReady(false);
+	}
+
 	if (m_Program != (cl_program)CL_INVALID_PROGRAM)
 	{
 		error = clReleaseProgram(m_Program);
@@ -413,60 +576,64 @@ bool COpenCL::CleanupProgram(void)
 		error = clReleaseContext(m_Context);
 		m_Context = (cl_context)CL_INVALID_CONTEXT;
 	}
+
+
 	return true;
 }
 bool COpenCL::CleanupProgramBuffers(void)
 {
+	put_BuffersReady(false);
 
 	return true;
 }
-bool COpenCLMand::CleanupProgramBuffers(void)
+bool COpenCLFrac::CleanupProgramBuffers(void)
 {
 
 	return true;
 }
-bool COpenCLMand::ExecuteProgram(int iKernel, cl_int *pError)
+bool COpenCLFrac::ExecuteProgramMand(int iDeviceIndex, int iKernelIndex, int iImageIndex, cl_int *pError)
 {
+	assert(get_BuffersReady());
 	cl_int error;
 
-	m_NumericRect.s0 = m_ma1;
-	m_NumericRect.s1 = m_mb1;
-	m_NumericRect.s2 = m_ma2;
-	m_NumericRect.s3 = m_mb2;
+	m_NumericRect[iKernelIndex].s0 = m_ma1[iKernelIndex];
+	m_NumericRect[iKernelIndex].s1 = m_mb1[iKernelIndex];
+	m_NumericRect[iKernelIndex].s2 = m_ma2[iKernelIndex];
+	m_NumericRect[iKernelIndex].s3 = m_mb2[iKernelIndex];
 
-	if (m_Kernel[iKernel] == (cl_kernel)CL_INVALID_KERNEL)
+	if (m_Kernel[iKernelIndex] == (cl_kernel)CL_INVALID_KERNEL)
 		return false;
 
-	error = clSetKernelArg(m_Kernel[iKernel], 3, sizeof(m_PaletteBuffer), &m_PaletteBuffer);
+	error = clSetKernelArg(m_Kernel[iKernelIndex], 3, sizeof(m_PaletteBuffer), &m_PaletteBuffer);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[iKernel], 2, sizeof(m_fMaxIterations), &m_fMaxIterations);
+	error = clSetKernelArg(m_Kernel[iKernelIndex], 2, sizeof(m_fMaxIterations[iKernelIndex]), &m_fMaxIterations[iKernelIndex]);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[iKernel], 1, sizeof(m_NumericRect), &m_NumericRect);
+	error = clSetKernelArg(m_Kernel[iKernelIndex], 1, sizeof(m_NumericRect[iKernelIndex]), &m_NumericRect[iKernelIndex]);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[iKernel], 0, sizeof(cl_mem), &m_Image);
+	error = clSetKernelArg(m_Kernel[iKernelIndex], 0, sizeof(cl_mem), &m_Image[iImageIndex]);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	size_t global_size[2] = { m_iWidth, m_iHeight };
-	error = clEnqueueNDRangeKernel(m_CommandQueue, m_Kernel[iKernel], 2, NULL, global_size, NULL, 0, NULL, NULL);
+	size_t global_size[2] = { m_iImageWidth[iImageIndex], m_iImageHeight[iImageIndex] };
+	error = clEnqueueNDRangeKernel(m_CommandQueue[iDeviceIndex], m_Kernel[iKernelIndex], 2, NULL, global_size, NULL, 0, NULL, NULL);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
@@ -474,8 +641,8 @@ bool COpenCLMand::ExecuteProgram(int iKernel, cl_int *pError)
 	}
 
 	size_t origin[3] = { 0, 0 };
-	size_t region[3] = { m_iWidth, m_iHeight, 1 };
-	error = clEnqueueReadImage(m_CommandQueue, m_Image, CL_TRUE, origin, region, 0, 0, (void*)m_BitmapBits, 0, NULL, NULL);
+	size_t region[3] = { m_iImageWidth[iImageIndex], m_iImageHeight[iImageIndex], 1 };
+	error = clEnqueueReadImage(m_CommandQueue[iDeviceIndex], m_Image[iImageIndex], CL_TRUE, origin, region, 0, 0, (void*)m_BitmapBits[iImageIndex], 0, NULL, NULL);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
@@ -487,31 +654,40 @@ bool COpenCLMand::ExecuteProgram(int iKernel, cl_int *pError)
 
 
 /***************************************************/
-
+/*
 bool COpenCLJulia::PrepareProgramBuffers(void)
 {
 	cl_int error;
+	int i;
 
-	m_ImageFormat.image_channel_data_type = CL_UNORM_INT8;
-	m_ImageFormat.image_channel_order = CL_RGBA;
-
-	if (m_Image != (cl_mem)CL_INVALID_MEM_OBJECT)
+	for (i = 0; i < MAX_IMAGES; ++i)
 	{
-		clReleaseMemObject(m_Image);
-		m_Image = (cl_mem)CL_INVALID_MEM_OBJECT;
-	}
-	m_Image = clCreateImage2D(m_Context, CL_MEM_WRITE_ONLY, &m_ImageFormat, DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE, 0, NULL, &error);
-	if (error != CL_SUCCESS)
-		return false;
+		m_ImageFormat[i].image_channel_data_type = CL_UNORM_INT8;
+		m_ImageFormat[i].image_channel_order = CL_RGBA;
 
-	m_PaletteBuffer = clCreateBuffer(m_Context, CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY, sizeof(m_Palette), m_Palette, &error);
-	if (error != CL_SUCCESS)
-		return false;
-	error = clEnqueueWriteBuffer(m_CommandQueue, m_PaletteBuffer, CL_TRUE, 0, sizeof(m_PaletteBuffer), m_PaletteBuffer, 0, NULL, NULL);
+		if (m_Image[i] != (cl_mem)CL_INVALID_MEM_OBJECT)
+		{
+			clReleaseMemObject(m_Image[i]);
+			m_Image[i] = (cl_mem)CL_INVALID_MEM_OBJECT;
+		}
+		m_Image[i] = clCreateImage2D(m_Context, CL_MEM_WRITE_ONLY, &m_ImageFormat[i], DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE, 0, NULL, &error);
+		if (error != CL_SUCCESS)
+			return false;
+
+		m_PaletteBuffer = clCreateBuffer(m_Context, CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY, sizeof(m_Palette), m_Palette, &error);
+		if (error != CL_SUCCESS)
+			return false;
+	}
+
+	// RAP: for now all images share one palette.  Enable each image to have its own (on the to-do list)
+	for (i = 0; i < m_iNumberDevices; ++i)
+	{
+		error = clEnqueueWriteBuffer(m_CommandQueue[i], m_PaletteBuffer, CL_TRUE, 0, sizeof(m_PaletteBuffer), m_PaletteBuffer, 0, NULL, NULL);
+	}
 
 	return true;
 }
-bool COpenCLJulia::CleanupProgramBuffers(void)
+bool COpenCLJulia::CleanupProgramBuffers()
 {
 	if (m_PaletteBuffer != (cl_mem)CL_INVALID_MEM_OBJECT)
 	{
@@ -519,58 +695,67 @@ bool COpenCLJulia::CleanupProgramBuffers(void)
 		m_PaletteBuffer = (cl_mem)CL_INVALID_MEM_OBJECT;
 	}
 
-	if (m_Image != (cl_mem)CL_INVALID_MEM_OBJECT)
+	for (int i = 0; i < MAX_IMAGES; ++i)
 	{
-		clReleaseMemObject(m_Image);
-		m_Image= (cl_mem)CL_INVALID_MEM_OBJECT;
+		if (m_Image[i] != (cl_mem)CL_INVALID_MEM_OBJECT)
+		{
+			clReleaseMemObject(m_Image[i]);
+			m_Image[i]= (cl_mem)CL_INVALID_MEM_OBJECT;
+		}
 	}
 
 	return true;
 }
-bool COpenCLJulia::ExecuteProgram(int iKernel, cl_int *pError)
+*/
+bool COpenCLFrac::ExecuteProgramJulia(int iDeviceIndex, int iKernelIndex, int iImageIndex, cl_int *pError)
 {
 	cl_int error;
 
-	if (m_Kernel[iKernel] == (cl_kernel)CL_INVALID_KERNEL)
+	if (m_Kernel[iKernelIndex] == (cl_kernel)CL_INVALID_KERNEL)
 		return false;
 
-	error = clSetKernelArg(m_Kernel[iKernel], 4, sizeof(m_PaletteBuffer), &m_PaletteBuffer);
+	m_NumericRect[iKernelIndex].s0 = m_ma1[iKernelIndex];
+	m_NumericRect[iKernelIndex].s1 = m_mb1[iKernelIndex];
+	m_NumericRect[iKernelIndex].s2 = m_ma2[iKernelIndex];
+	m_NumericRect[iKernelIndex].s3 = m_mb2[iKernelIndex];
+
+	error = clSetKernelArg(m_Kernel[iKernelIndex], 4, sizeof(m_PaletteBuffer), &m_PaletteBuffer);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[iKernel], 3, sizeof(m_fMaxIterations), &m_fMaxIterations);
+	error = clSetKernelArg(m_Kernel[iKernelIndex], 3, sizeof(m_fMaxIterations[iKernelIndex]), &m_fMaxIterations[iKernelIndex]);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[iKernel], 2, sizeof(m_NumericRect), &m_NumericRect);
+	error = clSetKernelArg(m_Kernel[iKernelIndex], 2, sizeof(m_NumericRect[iKernelIndex]), &m_NumericRect[iKernelIndex]);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[iKernel], 1, sizeof(m_Const), &m_Const);
+	error = clSetKernelArg(m_Kernel[iKernelIndex], 1, sizeof(m_Const[iKernelIndex]), &m_Const[iKernelIndex]);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	error = clSetKernelArg(m_Kernel[iKernel], 0, sizeof(cl_mem), &m_Image);
+	error = clSetKernelArg(m_Kernel[iKernelIndex], 0, sizeof(cl_mem), &m_Image[iImageIndex]);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
 		return false;
 	}
 
-	size_t global_size[2] = { m_iWidth, m_iHeight };
-	error = clEnqueueNDRangeKernel(m_CommandQueue, m_Kernel[iKernel], 2, NULL, global_size, NULL, 0, NULL, NULL);
+	size_t global_size[2] = { m_iImageWidth[iImageIndex], m_iImageHeight[iImageIndex] };
+	error = clEnqueueNDRangeKernel(m_CommandQueue[iDeviceIndex], m_Kernel[iKernelIndex], 2, NULL, global_size, NULL, 0, NULL, NULL);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
@@ -578,8 +763,8 @@ bool COpenCLJulia::ExecuteProgram(int iKernel, cl_int *pError)
 	}
 
 	size_t origin[3] = { 0, 0 };
-	size_t region[3] = { m_iWidth, m_iHeight, 1 };
-	error = clEnqueueReadImage(m_CommandQueue, m_Image, CL_TRUE, origin, region, 0, 0, (void*)m_BitmapBits, 0, NULL, NULL);
+	size_t region[3] = { m_iImageWidth[iImageIndex], m_iImageHeight[iImageIndex], 1 };
+	error = clEnqueueReadImage(m_CommandQueue[iDeviceIndex], m_Image[iImageIndex], CL_TRUE, origin, region, 0, 0, (void*)m_BitmapBits[iImageIndex], 0, NULL, NULL);
 	if (error != CL_SUCCESS)
 	{
 		*pError = error;
@@ -588,5 +773,3 @@ bool COpenCLJulia::ExecuteProgram(int iKernel, cl_int *pError)
 
 	return true;
 }
-
-

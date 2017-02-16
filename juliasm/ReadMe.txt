@@ -96,3 +96,4 @@ To-do
 	Currently there is one object for a device and this is inefficient.
 * Enhance the OpenCL object to perform startup actions (e.g. program compilation)
 	asynchronously in a thread.
+* Allow each image to have its own palette

@@ -46,7 +46,7 @@ COLORREF CPalette::get_Color(float fPaletteEntry)
 	int iCol2 = (iCol1 + 1) % MAX_COLORS;
 
 	float col2pct = fPaletteEntry - trunc(fPaletteEntry);
-	float col1pct = 1.0 - col2pct;
+	float col1pct = 1.0f - col2pct;
 
 	int Red1 = l_Colors[iCol1] & 0x0FF;
 	int Green1 = (l_Colors[iCol1] >> 8) & 0x0FF;
@@ -59,9 +59,9 @@ COLORREF CPalette::get_Color(float fPaletteEntry)
 	if (Red1 > 0)
 		Red1 = Red1;
 
-	int Red = min(MAX_COLORS - 1, Red1 * col1pct + Red2 * col2pct);
-	int Green = min(MAX_COLORS - 1, Green1 * col1pct + Green2 * col2pct);
-	int Blue = min(MAX_COLORS - 1, Blue1 * col1pct + Blue2 * col2pct);
+	int Red = (int)min(MAX_COLORS - 1, Red1 * col1pct + Red2 * col2pct);
+	int Green = (int)min(MAX_COLORS - 1, Green1 * col1pct + Green2 * col2pct);
+	int Blue = (int)min(MAX_COLORS - 1, Blue1 * col1pct + Blue2 * col2pct);
 
 	COLORREF c = RGB(Red, Green, Blue);
 	return c;

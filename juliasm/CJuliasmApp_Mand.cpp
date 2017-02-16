@@ -24,7 +24,7 @@ DWORD WINAPI CJuliasmApp::CalculateMandX87(void* pArguments)
 
 
 	// determine how much of the image this thread will calculate
-	double fThreadHeight = (pApp->m_b2 - pApp->m_b1) / pApp->m_iCalcThreadCount[FractalType::Mand];
+	double fThreadHeight = (pApp->m_b2 - pApp->m_b1) / pThreadInfo->pCalcInfo->iThreadCount;
 
 	double
 		_a = pApp->m_a1,
@@ -35,7 +35,7 @@ DWORD WINAPI CJuliasmApp::CalculateMandX87(void* pArguments)
 	// get the bitmap bits
 	unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpFractal[FractalType::Mand].get_bmpBits();
 
-	int pixelHeight = pApp->get_MandHeight() / pApp->m_iCalcThreadCount[FractalType::Mand];
+	int pixelHeight = pApp->get_MandHeight() / pThreadInfo->pCalcInfo->iThreadCount;
 	int starty = iThreadIndex * pixelHeight;
 	int endy = starty + pixelHeight;
 
@@ -68,7 +68,7 @@ DWORD WINAPI CJuliasmApp::CalculateMandX87(void* pArguments)
 						_cc = log(_mc);
 					else
 						_cc = log(-_mc);
-					fColor = i + 1.0 - _cc / log(2.0);
+					fColor = i + 1.0f - _cc / log(2.0);
 					break;	
 				}
 				cd2 = 2 * c * d;
@@ -92,8 +92,8 @@ DWORD WINAPI CJuliasmApp::CalculateMandX87(void* pArguments)
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThreadInfo->iThreadCompleteMessage, 
-		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
 		pThreadInfo->iThreadCompleteLParam);
 
 	return 0;
@@ -121,7 +121,7 @@ DWORD WINAPI CJuliasmApp::CalculateMandSSE(void* pArguments)
 	QueryPerformanceCounter(&tStart);
 
 	// determine how much of the image this thread will calculate
-	float fThreadHeight = (float)(pApp->m_b2 - pApp->m_b1) / pApp->m_iCalcThreadCount[FractalType::Mand];
+	float fThreadHeight = (float)(pApp->m_b2 - pApp->m_b1) / pThreadInfo->pCalcInfo->iThreadCount;
 
 	// declare calculation variables used by SSE
 	__declspec(align(16)) float iterations_sse[POINTS_CONCURRENT_SSE];
@@ -145,7 +145,7 @@ DWORD WINAPI CJuliasmApp::CalculateMandSSE(void* pArguments)
 	if (l_ppvBits == NULL)
 		MessageBox(NULL, "l_ppvBits is null", "Error", MB_ICONSTOP | MB_OK);
 
-	int pixelHeight = pApp->get_MandHeight() / pApp->m_iCalcThreadCount[FractalType::Mand];
+	int pixelHeight = pApp->get_MandHeight() / pThreadInfo->pCalcInfo->iThreadCount;
 	int starty = iThreadIndex * pixelHeight;
 	int endy = starty + pixelHeight;
 	unsigned int iIndex = 0 + starty * pApp->get_MandWidth();
@@ -244,8 +244,8 @@ DWORD WINAPI CJuliasmApp::CalculateMandSSE(void* pArguments)
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThreadInfo->iThreadCompleteMessage, 
-		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
 		pThreadInfo->iThreadCompleteLParam);
 
 	return 0;
@@ -269,7 +269,7 @@ DWORD WINAPI CJuliasmApp::CalculateMandSSE2(void* pArguments)
 	QueryPerformanceCounter(&tStart);
 
 	// determine how much of the image this thread will calculate
-	double fThreadHeight = (pApp->m_b2 - pApp->m_b1) / pApp->m_iCalcThreadCount[FractalType::Mand];
+	double fThreadHeight = (pApp->m_b2 - pApp->m_b1) / pThreadInfo->pCalcInfo->iThreadCount;
 
 	// declare calculation variables used by SSE
 	__declspec(align(16)) double iterations_sse[POINTS_CONCURRENT_SSE];
@@ -284,7 +284,7 @@ DWORD WINAPI CJuliasmApp::CalculateMandSSE2(void* pArguments)
 	// get the bitmap bits
 	__declspec(align(16)) unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpFractal[FractalType::Mand].get_bmpBits();
 
-	int pixelHeight = pApp->get_MandHeight() / pApp->m_iCalcThreadCount[FractalType::Mand];
+	int pixelHeight = pApp->get_MandHeight() / pThreadInfo->pCalcInfo->iThreadCount;
 	int starty = iThreadIndex * pixelHeight;
 	int endy = starty + pixelHeight;
 	unsigned int iIndex = 0 + starty * pApp->get_MandWidth();
@@ -376,8 +376,8 @@ DWORD WINAPI CJuliasmApp::CalculateMandSSE2(void* pArguments)
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThreadInfo->iThreadCompleteMessage, 
-		pThreadInfo->iThreadCompleteWParam, 
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
 		pThreadInfo->iThreadCompleteLParam);
 
 	return 0;
@@ -390,9 +390,9 @@ DWORD WINAPI CJuliasmApp::CalculateMandSSE2(void* pArguments)
 DWORD WINAPI CJuliasmApp::CalculateMandAVX32(void* pArguments)
 {
 	// get Application and thread inde information// get Application and thread inde information
-	TThreadInfo *pThread = (TThreadInfo*)pArguments;
-	CJuliasmApp *pApp = pThread->pApp;
-	int iThreadIndex = pThread->iThreadIndex;
+	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
+	CJuliasmApp *pApp = pThreadInfo->pApp;
+	int iThreadIndex = pThreadInfo->iThreadIndex;
 	int max_i = pApp->get_MaxIterationsMand();
 
 	// initialzie the performance counter
@@ -400,7 +400,7 @@ DWORD WINAPI CJuliasmApp::CalculateMandAVX32(void* pArguments)
 	QueryPerformanceCounter(&tStart);
 
 	// determine how much of the image this thread will calculate
-	float fThreadHeight = (float)(pApp->m_b2 - pApp->m_b1) / pApp->m_iCalcThreadCount[FractalType::Mand];
+	float fThreadHeight = (float)(pApp->m_b2 - pApp->m_b1) / pThreadInfo->pCalcInfo->iThreadCount;
 
 	// declare calculation variables used by SSE
 	__declspec(align(32)) float iterations_sse[POINTS_CONCURRENT_AVX32];
@@ -415,7 +415,7 @@ DWORD WINAPI CJuliasmApp::CalculateMandAVX32(void* pArguments)
 	// get the bitmap bits
 	unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpFractal[FractalType::Mand].get_bmpBits();
 
-	int pixelHeight = pApp->get_MandHeight() / pApp->m_iCalcThreadCount[FractalType::Mand];
+	int pixelHeight = pApp->get_MandHeight() / pThreadInfo->pCalcInfo->iThreadCount;
 	int starty = iThreadIndex * pixelHeight;
 	int endy = starty + pixelHeight;
 	unsigned int iIndex = 0 + starty * pApp->get_MandWidth();
@@ -513,9 +513,9 @@ DWORD WINAPI CJuliasmApp::CalculateMandAVX32(void* pArguments)
 	//	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThread->iThreadCompleteMessage, 
-		pThread->iThreadCompleteWParam, 
-		pThread->iThreadCompleteLParam);
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
+		pThreadInfo->iThreadCompleteLParam);
 
 	return 0;
 }
@@ -528,9 +528,9 @@ DWORD WINAPI CJuliasmApp::CalculateMandAVX32(void* pArguments)
 DWORD WINAPI CJuliasmApp::CalculateMandAVX64(void* pArguments)
 {
 	// get Application and thread inde information
-	TThreadInfo *pThread = (TThreadInfo*)pArguments;
-	CJuliasmApp *pApp = pThread->pApp;
-	int iThreadIndex = pThread->iThreadIndex;
+	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
+	CJuliasmApp *pApp = pThreadInfo->pApp;
+	int iThreadIndex = pThreadInfo->iThreadIndex;
 	__declspec(align(32))int max_i = pApp->get_MaxIterationsMand();
 
 	// initialzie the performance counter
@@ -538,7 +538,7 @@ DWORD WINAPI CJuliasmApp::CalculateMandAVX64(void* pArguments)
 	QueryPerformanceCounter(&tStart);
 
 	// determine how much of the image this thread will calculate
-	double fThreadHeight = (double)(pApp->m_b2 - pApp->m_b1) / pApp->m_iCalcThreadCount[FractalType::Mand];
+	double fThreadHeight = (double)(pApp->m_b2 - pApp->m_b1) / pThreadInfo->pCalcInfo->iThreadCount;
 
 	// declare calculation variables used by SSE
 	__declspec(align(32)) double iterations_sse[POINTS_CONCURRENT_AVX64];
@@ -553,7 +553,7 @@ DWORD WINAPI CJuliasmApp::CalculateMandAVX64(void* pArguments)
 	// get the bitmap bits
 	__declspec(align(32)) unsigned int* l_ppvBits = (unsigned int*)pApp->m_bmpFractal[FractalType::Mand].get_bmpBits();
 
-	int pixelHeight = pApp->get_MandHeight() / pApp->m_iCalcThreadCount[FractalType::Mand];
+	int pixelHeight = pApp->get_MandHeight() / pThreadInfo->pCalcInfo->iThreadCount;
 	int starty = iThreadIndex * pixelHeight;
 	int endy = starty + pixelHeight;
 	unsigned int iIndex = 0 + starty * pApp->get_MandWidth();
@@ -645,47 +645,51 @@ DWORD WINAPI CJuliasmApp::CalculateMandAVX64(void* pArguments)
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThread->iThreadCompleteMessage, 
-		pThread->iThreadCompleteWParam, 
-		pThread->iThreadCompleteLParam);
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
+		pThreadInfo->iThreadCompleteLParam);
 	
 	return 0;
 }
 DWORD WINAPI CJuliasmApp::CalculateMandFMA(void* pArguments)
 {
-	TThreadInfo *pThread = (TThreadInfo*)pArguments;
-	CJuliasmApp *pApp = pThread->pApp;
+	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
+	CJuliasmApp *pApp = pThreadInfo->pApp;
 
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThread->iThreadCompleteMessage, 
-		pThread->iThreadCompleteWParam, 
-		pThread->iThreadCompleteLParam);
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
+		pThreadInfo->iThreadCompleteLParam);
 
 	return 0;
 }
 DWORD WINAPI CJuliasmApp::CalculateMandOpenCL(void* pArguments)
 {
-	TThreadInfo *pThread = (TThreadInfo*)pArguments;
-	CJuliasmApp *pApp = pThread->pApp;
+	TThreadInfo *pThreadInfo = (TThreadInfo*)pArguments;
+	CJuliasmApp *pApp = pThreadInfo->pApp;
+
+	int iDeviceIndex = pApp->m_OCLFrac.get_DeviceIndexByType(pThreadInfo->pCalcInfo->iOCLDeviceType);
+	if (iDeviceIndex < 0)
+		return 0;
 
 	// Execute the calculation
 	cl_int error;
-	if (false == pApp->m_OCLMand.ExecuteProgram(pThread->iKernelNumber, &error))
+	if (false == pApp->m_OCLFrac.ExecuteProgramMand(iDeviceIndex, pThreadInfo->pCalcInfo->iOCLKernelNumber, pThreadInfo->pCalcInfo->iOCLImageIndex, &error))
 	{
 		char szBuf[64];
 		sprintf_s(szBuf, _countof(szBuf), "Error %d executing OpenCL kernel.", error);
 		MessageBox(NULL, szBuf, "Error", MB_ICONEXCLAMATION);
 	}
-	pThread->oclError = error;
+	pThreadInfo->oclError = error;
 
 	// tell the application that the thread is complete
 	PostMessage(
 		pApp->get_hWnd(), 
-		pThread->iThreadCompleteMessage, 
-		pThread->iThreadCompleteWParam, 
-		pThread->iThreadCompleteLParam);
+		pThreadInfo->pCalcInfo->iThreadCompleteMessage, 
+		pThreadInfo->pCalcInfo->iThreadCompleteWParam, 
+		pThreadInfo->iThreadCompleteLParam);
 
 	return 0;
 }

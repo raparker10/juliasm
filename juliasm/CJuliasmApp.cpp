@@ -1,35 +1,39 @@
 #include "stdafx.h"
 
+#define DEFAULT_MAND_CACLINFO_INDEX 4
+#define DEFAULT_JULIA_CACLINFO_INDEX 13
+
 TCalcInfo CJuliasmApp::m_ci[] = {
-	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::None,			0,					NULL,				0,			0,					0,					0},
-	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::x87,			MAX_CPU_THREADS,	CalculateMandX87,	WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
-	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::SSE,			MAX_CPU_THREADS,	CalculateMandSSE,	WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
-	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::SSE2,			MAX_CPU_THREADS,	CalculateMandSSE2,	WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
-	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::AVX32,		MAX_CPU_THREADS,	CalculateMandAVX32, WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
-	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::AVX64,		MAX_CPU_THREADS,	CalculateMandAVX64, WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
-	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::FMA,			MAX_CPU_THREADS,	CalculateMandFMA,	WM_COMMAND, IDM_THREADCOMPLETE, 0,					0},
-	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::OpenCL_CPU,	MAX_OCL_THREADS,	CalculateMandOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 5},
-	{FractalType::Mand, FractalFormula::FormMand, CalcPlatform::OpenCL_GPU,	MAX_OCL_THREADS,	CalculateMandOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 5},
+	{ FractalType::Mand, FractalFormula::FormMand, CalcPlatform::None, 0, NULL, 0, 0, 0, 0, IMAGE_MAND },
+	{ FractalType::Mand, FractalFormula::FormMand, CalcPlatform::x87, MAX_CPU_THREADS, CalculateMandX87, WM_COMMAND, IDM_THREADCOMPLETE, 0, 0, IMAGE_MAND },
+	{ FractalType::Mand, FractalFormula::FormMand, CalcPlatform::SSE, MAX_CPU_THREADS, CalculateMandSSE, WM_COMMAND, IDM_THREADCOMPLETE, 0, 0, IMAGE_MAND },
+	{ FractalType::Mand, FractalFormula::FormMand, CalcPlatform::SSE2, MAX_CPU_THREADS, CalculateMandSSE2, WM_COMMAND, IDM_THREADCOMPLETE, 0, 0, IMAGE_MAND },
+	{ FractalType::Mand, FractalFormula::FormMand, CalcPlatform::AVX32, MAX_CPU_THREADS, CalculateMandAVX32, WM_COMMAND, IDM_THREADCOMPLETE, 0, 0, IMAGE_MAND },
+	{ FractalType::Mand, FractalFormula::FormMand, CalcPlatform::AVX64, MAX_CPU_THREADS, CalculateMandAVX64, WM_COMMAND, IDM_THREADCOMPLETE, 0, 0, IMAGE_MAND },
+	{ FractalType::Mand, FractalFormula::FormMand, CalcPlatform::FMA, MAX_CPU_THREADS, CalculateMandFMA, WM_COMMAND, IDM_THREADCOMPLETE, 0, 0, IMAGE_MAND },
+	{ FractalType::Mand, FractalFormula::FormMand, CalcPlatform::OpenCL_CPU, MAX_OCL_THREADS, CalculateMandOpenCL, WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 0, IMAGE_MAND },
+	{ FractalType::Mand, FractalFormula::FormMand, CalcPlatform::OpenCL_GPU, MAX_OCL_THREADS, CalculateMandOpenCL, WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 7, IMAGE_MAND },
 
-	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::None,		0,					NULL,					0,			0,							0,					0},
-	{FractalType::Julia, FractalFormula::FormMand, ::x87,			MAX_CPU_THREADS,	CalculateJuliaX87,		WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
-	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::SSE,			MAX_CPU_THREADS,	CalculateJuliaSSE,		WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
-	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::SSE2,		MAX_CPU_THREADS,	CalculateJuliaSSE2,		WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
-	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::AVX32,		MAX_CPU_THREADS,	CalculateJuliaAVX32,	WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
-	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::AVX64,		MAX_CPU_THREADS,	CalculateJuliaAVX64,	WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
-	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::FMA,			MAX_CPU_THREADS,	CalculateJuliaFMA,		WM_COMMAND, IDM_THREADCOMPLETE,	0,					0},
-//	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::OpenCL_CPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,	WM_COMMAND, IDM_THREADCOMPLETE,	CL_DEVICE_TYPE_CPU, 2},
-//	{FractalType::Julia, FractalFormula::FormMand, CalcPlatform::OpenCL_GPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,	WM_COMMAND, IDM_THREADCOMPLETE,	CL_DEVICE_TYPE_GPU, 2},
+	{ FractalType::Julia, FractalFormula::FormMand, CalcPlatform::None, 0, NULL, 0, 0, 0, 0 },
+	{ FractalType::Julia, FractalFormula::FormMand, CalcPlatform::x87, MAX_CPU_THREADS, CalculateJuliaX87, WM_COMMAND, IDM_THREADCOMPLETE, 0, 0, IMAGE_JULIA },
+	{ FractalType::Julia, FractalFormula::FormMand, CalcPlatform::SSE, MAX_CPU_THREADS, CalculateJuliaSSE, WM_COMMAND, IDM_THREADCOMPLETE, 0, 0, IMAGE_JULIA },
+	{ FractalType::Julia, FractalFormula::FormMand, CalcPlatform::SSE2, MAX_CPU_THREADS, CalculateJuliaSSE2, WM_COMMAND, IDM_THREADCOMPLETE, 0, 0, IMAGE_JULIA },
+	{ FractalType::Julia, FractalFormula::FormMand, CalcPlatform::AVX32, MAX_CPU_THREADS, CalculateJuliaAVX32, WM_COMMAND, IDM_THREADCOMPLETE, 0, 0, IMAGE_JULIA },
+	{ FractalType::Julia, FractalFormula::FormMand, CalcPlatform::AVX64, MAX_CPU_THREADS, CalculateJuliaAVX64, WM_COMMAND, IDM_THREADCOMPLETE, 0, 0, IMAGE_JULIA },
+	{ FractalType::Julia, FractalFormula::FormMand, CalcPlatform::FMA, MAX_CPU_THREADS, CalculateJuliaFMA, WM_COMMAND, IDM_THREADCOMPLETE, 0, 0, IMAGE_JULIA },
 
-	{FractalType::Julia, FractalFormula::FormSin, CalcPlatform::OpenCL_CPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 4},
-	{FractalType::Julia, FractalFormula::FormSin, CalcPlatform::OpenCL_GPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 4},
+	{ FractalType::Julia, FractalFormula::FormMand, CalcPlatform::OpenCL_CPU, MAX_OCL_THREADS, CalculateJuliaOpenCL, WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 1, IMAGE_JULIA },
+	{ FractalType::Julia, FractalFormula::FormMand, CalcPlatform::OpenCL_GPU, MAX_OCL_THREADS, CalculateJuliaOpenCL, WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 1, IMAGE_JULIA },
 
-	{FractalType::Julia, FractalFormula::FormCos, CalcPlatform::OpenCL_CPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 5},
-	{FractalType::Julia, FractalFormula::FormCos, CalcPlatform::OpenCL_GPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 5},
+	{ FractalType::Julia, FractalFormula::FormSin, CalcPlatform::OpenCL_CPU, MAX_OCL_THREADS, CalculateJuliaOpenCL, WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 4, IMAGE_JULIA },
+	{ FractalType::Julia, FractalFormula::FormSin, CalcPlatform::OpenCL_GPU, MAX_OCL_THREADS, CalculateJuliaOpenCL, WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 4, IMAGE_JULIA },
 
-	{FractalType::Julia, FractalFormula::FormExp, CalcPlatform::OpenCL_CPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 6},
-	{FractalType::Julia, FractalFormula::FormExp, CalcPlatform::OpenCL_GPU,	MAX_OCL_THREADS,	CalculateJuliaOpenCL,WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 6},
-	};
+	{ FractalType::Julia, FractalFormula::FormCos, CalcPlatform::OpenCL_CPU, MAX_OCL_THREADS, CalculateJuliaOpenCL, WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 5, IMAGE_JULIA },
+	{ FractalType::Julia, FractalFormula::FormCos, CalcPlatform::OpenCL_GPU, MAX_OCL_THREADS, CalculateJuliaOpenCL, WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 5, IMAGE_JULIA },
+
+	{ FractalType::Julia, FractalFormula::FormExp, CalcPlatform::OpenCL_CPU, MAX_OCL_THREADS, CalculateJuliaOpenCL, WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_CPU, 6, IMAGE_JULIA },
+	{ FractalType::Julia, FractalFormula::FormExp, CalcPlatform::OpenCL_GPU, MAX_OCL_THREADS, CalculateJuliaOpenCL, WM_COMMAND, IDM_THREADCOMPLETE, CL_DEVICE_TYPE_GPU, 6, IMAGE_JULIA },
+};
 
 
 // application initialization
@@ -53,12 +57,16 @@ void CJuliasmApp::Initialize(void)
 {
 	int i;
 
+	// setup the default fractal information
+	m_pCalcInfo[FractalType::Mand] = get_CalcInfo(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::AVX32);
+	m_pCalcInfo[FractalType::Julia] = get_CalcInfo(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::AVX32);
+
 	// clear the screen positioning information
 	m_iMandScreenPct = 25;	// 25%
 	memset(&m_rcMand, 0, sizeof(m_rcMand));
 	_m_iMandHeight = 0;
 	_m_iMandWidth = 0;
-	
+
 	for (int i = 0; i < sizeof(m_bShowFractal) / sizeof(m_bShowFractal[0]); ++i)
 		m_bShowFractal[i] = true;
 
@@ -76,23 +84,27 @@ void CJuliasmApp::Initialize(void)
 	// it is easily called separately from the program menu
 	InitializeMand();
 
+	// default the calculation "platform": None, x87, SSE, ... etc ...
+	put_CalcPlatform(m_pCalcInfo[FractalType::Mand]->iFracType, m_pCalcInfo[FractalType::Mand]->iFracFormula, m_pCalcInfo[FractalType::Mand]->iCalcPlatform);
+	put_CalcPlatform(m_pCalcInfo[FractalType::Julia]->iFracType, m_pCalcInfo[FractalType::Julia]->iFracFormula, m_pCalcInfo[FractalType::Julia]->iCalcPlatform);
+
 	// initialize julia set calculation variables
 	m_jc1 = -1.0;
 	m_jc2 = 1.0;
 	m_jd1 = -1.0;
 	m_jd2 = 1.0;
 
-	m_OCLJulia.put_Boundary((float)m_jc1, (float)m_jd1, (float)m_jc2, (float)m_jd2);
+	m_OCLFrac.put_Boundary(m_pCalcInfo[FractalType::Julia]->iOCLKernelNumber, (float)m_jc1, (float)m_jd1, (float)m_jc2, (float)m_jd2);
 
 	put_MaxIterationsJulia(1024);
 
 	// initialize thread-handling variables
-	for (i = 0; i < FractalType::NUMBER_FRACTAL_TYPES; ++i)
-		m_iCalcThreadCount[FractalType::Mand] = 0;
+	///	for (i = 0; i < FractalType::NUMBER_FRACTAL_TYPES; ++i)
+	///		m_iCalcThreadCount[FractalType::Mand] = 0;
 
 	for (i = 0; i < _countof(m_iCalculatingFractal); ++i)
 	{
-		m_iCalculatingFractal[i] = 0;
+		InterlockedAnd(&m_iCalculatingFractal[i], 0);
 	}
 
 	//
@@ -123,16 +135,13 @@ void CJuliasmApp::Initialize(void)
 	m_PaletteDefault.PushColorPoint(2, CPixelPoint(255, 0));
 
 	// create a palette from the color points
-//	m_PaletteDefault.put_BlackAndWhite(false);
+	//	m_PaletteDefault.put_BlackAndWhite(false);
 	m_PaletteDefault.UpdateColors();
 
 
 	// initialize the high-resolution timing functionality
 	QueryPerformanceFrequency(&m_ticksPerSecond);
 
-	// default the calculation "platform": None, x87, SSE, ... etc ...
-	put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::None);
-	put_CalcPlatform(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::None);
 
 	//
 	// initialize the font information
@@ -157,7 +166,7 @@ void CJuliasmApp::InitializeMand(void)
 	m_a2 = 2.0f;
 	m_b1 = -2.0f;
 	m_b2 = 2.0f;
-	m_OCLMand.put_Boundary((float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
+	m_OCLFrac.put_Boundary(IMAGE_MAND, (float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
 
 	// per-pixel offsets in the horizontal (da) and vertical (db) directions
 	put_MaxIterationsMand(1024);
@@ -173,10 +182,16 @@ void CJuliasmApp::InitializeJulia(void)
 	m_jc2 = 2.0f;
 	m_jd1 = -2.0f;
 	m_jd2 = 2.0f;
-	m_OCLJulia.put_Boundary((float)m_jc1, (float)m_jd1, (float)m_jc2, (float)m_jd2);
 
 	// per-pixel offsets in the horizontal (da) and vertical (db) directions
 	put_MaxIterationsJulia(1024);
+
+	assert(m_OCLFrac.get_KernelCount() > 0); // this should always be called after compilation.  might need to reorganize this
+	for (int i = 0; i < m_OCLFrac.get_KernelCount(); ++i)
+	{
+		m_OCLFrac.put_Boundary(i, (float)m_jc1, (float)m_jd1, (float)m_jc2, (float)m_jd2);
+	}
+
 }
 
 // handle a mouse double-click.
@@ -323,11 +338,28 @@ bool CJuliasmApp::handle_paint(HWND hWnd, HDC hdc, LPPAINTSTRUCT ps)
 	return true;
 }
 
+TCalcInfo *CJuliasmApp::get_CalcInfo(FractalType ft, FractalFormula ff, CalcPlatform cp)
+{
+	TCalcInfo *pCI = NULL;
+	for (int i = 0; i < sizeof(m_ci) / sizeof(m_ci[0]); ++i)
+	{
+		if (m_ci[i].iFracType == ft && m_ci[i].iFracFormula == ff && m_ci[i].iCalcPlatform == cp)
+		{
+			pCI = &m_ci[i];
+			break;
+		}
+	}
+	assert(pCI != NULL);
+	return pCI;
+}
+
 //
 // handle main window startup 
 //
 bool CJuliasmApp::handle_create(HWND hWnd, LPCREATESTRUCT *lpcs)
 {
+	m_hWnd = hWnd;
+
 	// 
 	// create the font for information display
 	//
@@ -339,50 +371,31 @@ bool CJuliasmApp::handle_create(HWND hWnd, LPCREATESTRUCT *lpcs)
 	ReleaseDC(hWnd, hdc);
 
 	// setup the application defaults
-	put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::SSE);
+	//	put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::AVX32);
 	put_MaxIterationsMand(1024);
-	put_CalcPlatform(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::AVX32);
+	//	put_CalcPlatform(FractalType::Julia, FractalFormula::FormMand, CalcPlatform::AVX32);
 	put_MaxIterationsJulia(1024);
 
 	//
 	// OpenCL preparation
 	//
-	m_OCLMand.put_Palette(256, m_PaletteDefault.get_RedChannel(), m_PaletteDefault.get_GreenChannel(), m_PaletteDefault.get_BlueChannel());
-	m_OCLMand.UsePlatformDefault();
-	m_OCLMand.UseDeviceByType(CL_DEVICE_TYPE_GPU);
-	if (false == m_OCLMand.LoadProgram("fractals.cl", true))
+	m_OCLFrac.put_Palette(256, m_PaletteDefault.get_RedChannel(), m_PaletteDefault.get_GreenChannel(), m_PaletteDefault.get_BlueChannel());
+	m_OCLFrac.UsePlatformDefault();
+	m_OCLFrac.UseDeviceByType(m_pCalcInfo[FractalType::Mand]->iOCLKernelNumber, CL_DEVICE_TYPE_GPU);
+	m_OCLFrac.UseDeviceByType(m_pCalcInfo[FractalType::Julia]->iOCLKernelNumber, CL_DEVICE_TYPE_GPU);
+	if (false == m_OCLFrac.LoadProgram("fractals.cl", true))
 	{
 		MessageBox(hWnd, "Unable to load program 'fractals.cl' for the Mandelbrot GPU program.", "Error", MB_ICONSTOP | MB_OK);
 		exit(0);
 	}
-	if (false == m_OCLMand.PrepareProgram())
+	if (false == m_OCLFrac.PrepareProgram(get_hWnd(), IDM_OCL_BUILD_COMPLETE))
 	{
-		char szBuf[128];
-		sprintf_s(szBuf, _countof(szBuf), "Error %d preparing Mandelbrot set OpenCL_GPU program.", m_OCLMand.get_LastBuildStatus());
-		MessageBox(m_hWnd, szBuf, "Error", MB_ICONSTOP | MB_OK);
-		MessageBox(m_hWnd, m_OCLMand.get_LastBuildMessage(), "OpenCL Build Message", MB_ICONSTOP | MB_OK);
-		exit(0);
+		MessageBox(get_hWnd(), "Unable to initialize OpenCL. Other calculation platforms can still be used.", "OpenCL Error", MB_ICONINFORMATION | MB_OK);
 	}
 
-	m_OCLJulia.put_Palette(256, m_PaletteDefault.get_RedChannel(), m_PaletteDefault.get_GreenChannel(), m_PaletteDefault.get_BlueChannel());
-	m_OCLJulia.UsePlatformDefault();
-	m_OCLJulia.UseDeviceByType(CL_DEVICE_TYPE_GPU);
-	if (false == m_OCLJulia.LoadProgram("fractals.cl", true))
-	{
-		MessageBox(hWnd, "Unable to load program 'fractals.cl' for the Julia set GPU program.", "Error", MB_ICONSTOP | MB_OK);
-		exit(0);
-	}
-	if (false == m_OCLJulia.PrepareProgram())
-	{
-		char szBuf[128];
-		sprintf_s(szBuf, _countof(szBuf), "Error %d preparing Julia set OpenCL_GPU program.", m_OCLJulia.get_LastBuildStatus());
-		MessageBox(m_hWnd, szBuf, "Error", MB_ICONSTOP | MB_OK);
-		exit(0);
-	}
+	UpdateCalcPlatformMenuJulia();
+	UpdateCalcPlatformMenuMand();
 
-
-	// request a redraw of the mandalbrot image
-	//	PostMessage(hWnd, WM_COMMAND, IDM_RECALCULATE_MAND, 0);
 	return true;
 }
 
@@ -400,7 +413,7 @@ bool CJuliasmApp::StartCalc(FractalType ft)
 		return false;
 
 	// don't perform a calculation if there is no current calculation function
-	if (NULL == m_pCalculateFunc[ft])
+	if (NULL == m_pCalcInfo[ft]->pCalculateFunc)
 		return false;
 
 	// only recalculate if there is not an ongoing calculation
@@ -424,34 +437,80 @@ bool CJuliasmApp::StartCalc(FractalType ft)
 	// create threads to perform the calculation
 	//
 	SecureZeroMemory(m_hThread[ft], sizeof(m_hThread[ft]));
-	for (int i = 0; i < m_iCalcThreadCount[ft]; ++i)
+	for (int i = 0; i < m_pCalcInfo[ft]->iThreadCount; ++i)
 	{
 		InterlockedIncrement(&m_iCalculatingFractal[ft]);
+		m_ThreadInfo[ft][i].pCalcInfo = m_pCalcInfo[ft];
 		m_ThreadInfo[ft][i].iThreadIndex = i;
 		m_ThreadInfo[ft][i].pApp = this;
-		m_ThreadInfo[ft][i].iThreadCompleteMessage = m_CalcCompleteMessage[ft];
-		m_ThreadInfo[ft][i].iThreadCompleteWParam = m_CalcCompleteWParam[ft];
-		m_ThreadInfo[ft][i].iThreadCompleteLParam = m_CalcCompleteLParam[ft];
-		m_ThreadInfo[ft][i].iKernelNumber = m_iCalcKernel[ft];
+		m_ThreadInfo[ft][i].iThreadCompleteLParam = MAKELPARAM((WORD)ft, (WORD)m_pCalcInfo[ft]->iCalcPlatform);
 
 		if (m_bmpFractal[ft].get_bmpBits() == NULL)
 		{
 			MessageBox(NULL, "bitmap is NULL", "Error", MB_ICONEXCLAMATION | MB_OK);
 		}
 
-		m_hThread[ft][i] = CreateThread(NULL, THREAD_STACK_SIZE, m_pCalculateFunc[ft], (LPVOID)&m_ThreadInfo[ft][i], 0, NULL);
+		m_hThread[ft][i] = CreateThread(NULL, THREAD_STACK_SIZE, m_pCalcInfo[ft]->pCalculateFunc, (LPVOID)&m_ThreadInfo[ft][i], 0, NULL);
 	}
 	return true;
 }
 bool CJuliasmApp::handle_rbuttondown(HWND hWnd, WORD wvKeys, int x, int y)
 {
-	m_bUpdateJulia = ! m_bUpdateJulia;
+	m_bUpdateJulia = !m_bUpdateJulia;
 	return true;
 }
 bool CJuliasmApp::handle_rbuttonup(HWND hWnd, WORD	wvKeys, int x, int y)
 {
 	return false;
 }
+
+void CJuliasmApp::SetupOCLOptions(bool bOCLAvailable)
+{
+	//	m_OCLFrac.UseDeviceByType(m_pCalcInfo[FractalType::Julia]->iOCLKernelNumber, CL_DEVICE_TYPE_GPU);
+	if (m_OCLFrac.get_BuffersReady())
+	{
+		if (false == m_OCLFrac.put_ImageSize(IMAGE_MAND, m_bmpFractal[FractalType::Mand].get_Width(), m_bmpFractal[FractalType::Mand].get_Height()))
+		{
+			MessageBox(get_hWnd(), "Unable to resize Mandelbrot image.", "Error", MB_ICONSTOP | MB_OK);
+			exit(0);
+		}
+		if (false == m_OCLFrac.put_ImageSize(IMAGE_JULIA, m_bmpFractal[FractalType::Julia].get_Width(), m_bmpFractal[FractalType::Julia].get_Height()))
+		{
+			MessageBox(get_hWnd(), "Unable to resize Julia image.", "Error", MB_ICONSTOP | MB_OK);
+			exit(0);
+		}
+	}
+
+	// enable OpenCL menu options
+	static int iOCLMenuOptions[] = {
+		IDM_CALCULATE_MAND_OPENCL_CPU,
+		IDM_CALCULATE_MAND_OPENCL_GPU,
+		IDM_CALCULATE_JULIA_OPENCL_CPU,
+		IDM_CALCULATE_JULIA_OPENCL_GPU,
+		IDM_CALCULATE_SIN_JULIA_OPENCL_CPU,
+		IDM_CALCULATE_SIN_JULIA_OPENCL_GPU,
+		IDM_CALCULATE_COS_JULIA_OPENCL_CPU,
+		IDM_CALCULATE_COS_JULIA_OPENCL_GPU,
+		IDM_CALCULATE_EXP_JULIA_OPENCL_CPU,
+		IDM_CALCULATE_EXP_JULIA_OPENCL_GPU,
+	};
+
+	HWND hWnd = get_hWnd();
+	if (hWnd != NULL)
+	{
+		HMENU hMenu = GetMenu(hWnd);
+		if (hMenu != NULL)
+		{
+			for (int i = 0; i < _countof(iOCLMenuOptions); ++i)
+			{
+				EnableMenuItem(hMenu, iOCLMenuOptions[i], MF_ENABLED | MF_BYCOMMAND);
+			}
+		}
+	}
+
+
+}
+
 //
 // handle command messages 
 //
@@ -462,6 +521,10 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent, LPARAM lParam
 
 	switch (wmID)
 	{
+	case IDM_OCL_BUILD_COMPLETE:
+		SetupOCLOptions(wmID != 0);
+		return true;
+
 	case IDM_CALCULATE_MAND_X87:
 		put_CalcPlatform(FractalType::Mand, FractalFormula::FormMand, CalcPlatform::x87);
 		PostCalc(FractalType::Mand);
@@ -591,12 +654,12 @@ bool CJuliasmApp::handle_command(HWND hWnd, int wmID, int wmEvent, LPARAM lParam
 
 	case IDM_THREADCOMPLETE:
 		ft = (FractalType)LOWORD(lParam);
-		if (0 == InterlockedDecrementAcquire(&m_iCalculatingFractal[ft]))
+		if (0 == InterlockedDecrement(&m_iCalculatingFractal[ft]))
 		{
 			m_tProcessDurationTotal[ft].QuadPart = 0;
 
 			// kill the threads and update the total thread working duration
-			for (i = 0; i < m_iCalcThreadCount[ft]; ++i)
+			for (i = 0; i < m_pCalcInfo[ft]->iThreadCount; ++i)
 			{
 				CloseHandle(m_hThread[ft][i]);
 				m_tThreadDurationTotal[ft].QuadPart += m_tThreadDuration[ft][i].QuadPart;
@@ -789,7 +852,7 @@ bool CJuliasmApp::handle_vscroll(HWND hWnd, int iScrollRequest, int iScrollPosit
 // handle window resizing
 //
 
-bool CJuliasmApp::put_MandRect(int x1, int y1, int x2, int y2, bool bShow)
+bool CJuliasmApp::put_MandRect(int iImageIndex, int x1, int y1, int x2, int y2, bool bShow)
 {
 	char szBuf[128];
 
@@ -807,19 +870,27 @@ bool CJuliasmApp::put_MandRect(int x1, int y1, int x2, int y2, bool bShow)
 		MessageBox(get_hWnd(), szBuf, "Error", MB_ICONSTOP | MB_OK);
 		exit(0);
 	}
-	if (false == m_OCLMand.put_ImageSize(_m_iMandWidth, _m_iMandHeight))
+	//
+	// update the OpenCL object if it is ready, because buffers require the existance of an OpenCL context
+	//
+	if (m_OCLFrac.get_BuffersReady())
 	{
-		MessageBox(get_hWnd(), "Unable to resize Mandelbrot image.", "Error", MB_ICONSTOP | MB_OK);
-		exit(0);
+		if (false == m_OCLFrac.put_ImageSize(IMAGE_MAND, _m_iMandWidth, _m_iMandHeight))
+		{
+			MessageBox(get_hWnd(), "Unable to resize Mandelbrot image.", "Error", MB_ICONSTOP | MB_OK);
+			exit(0);
+		}
 	}
-	if (false == m_OCLMand.put_Bitmap(bShow ? m_bmpFractal[FractalType::Mand].get_bmpBits() : NULL))
+	//
+	// it's okay to set the bitmap even if the buffers arent ready because they bitmaps don't require the existance of an OpenCL context
+	if (false == m_OCLFrac.put_Bitmap(IMAGE_MAND, bShow ? m_bmpFractal[FractalType::Mand].get_bmpBits() : NULL))
 	{
 		MessageBox(get_hWnd(), "Unable to put bitmap in Mandelbrot image.", "Error", MB_ICONSTOP | MB_OK);
 		exit(0);
 	}
 	return true;
 }
-bool CJuliasmApp::put_JuliaRect(int x1, int y1, int x2, int y2, bool bShow)
+bool CJuliasmApp::put_JuliaRect(int iImageIndex, int x1, int y1, int x2, int y2, bool bShow)
 {
 	char szBuf[128];
 
@@ -837,19 +908,23 @@ bool CJuliasmApp::put_JuliaRect(int x1, int y1, int x2, int y2, bool bShow)
 		MessageBox(get_hWnd(), "Unable to create Julia set bitmap.", "Error", MB_ICONSTOP | MB_OK);
 		exit(0);
 	}
-	if (false == m_OCLJulia.put_ImageSize(_m_iJuliaWidth, _m_iJuliaHeight))
+	if (m_OCLFrac.get_BuffersReady())
 	{
-		MessageBox(get_hWnd(), "Unable to create resize Julia set image.", "Error", MB_ICONSTOP | MB_OK);
-		exit(0);
+		if (false == m_OCLFrac.put_ImageSize(IMAGE_JULIA, _m_iJuliaWidth, _m_iJuliaHeight))
+		{
+			MessageBox(get_hWnd(), "Unable to create resize Julia set image.", "Error", MB_ICONSTOP | MB_OK);
+			exit(0);
+		}
 	}
 	if (get_ShowFractal(FractalType::Julia))
 	{
-		if (false == m_OCLJulia.put_Bitmap(m_bmpFractal[FractalType::Julia].get_bmpBits()))
+		if (false == m_OCLFrac.put_Bitmap(IMAGE_JULIA, m_bmpFractal[FractalType::Julia].get_bmpBits()))
 		{
 			MessageBox(get_hWnd(), "Unable to create put bitmap in Julia set image.", "Error", MB_ICONSTOP | MB_OK);
 			exit(0);
 		}
 	}
+
 	return true;
 }
 bool CJuliasmApp::put_InfoRect(int x1, int y1, int x2, int y2, bool bShow)
@@ -887,10 +962,10 @@ bool CJuliasmApp::put_MandScreenPct(int iPct)
 		m_a2 = am + d * rcClient.right / 2.0;
 		m_b1 = bm - d * rcClient.bottom / 2.0;
 		m_b2 = bm + d * rcClient.bottom / 2.0;
-		m_OCLMand.put_Boundary((float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
+		m_OCLFrac.put_Boundary(IMAGE_MAND, (float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
 
-		put_MandRect(0, 0, rcClient.right, rcClient.bottom, true);
-		put_JuliaRect(0, 0, 0, 0, false);
+		put_MandRect(IMAGE_MAND, 0, 0, rcClient.right, rcClient.bottom, true);
+		put_JuliaRect(IMAGE_JULIA, 0, 0, 0, 0, false);
 		put_InfoRect(0, 0, 0, 0, false);
 	}
 	//
@@ -921,9 +996,9 @@ bool CJuliasmApp::put_MandScreenPct(int iPct)
 		m_a2 = am + d * rcMand.right / 2.0;
 		m_b1 = bm - d * rcMand.bottom / 2.0;
 		m_b2 = bm + d * rcMand.bottom / 2.0;
-		m_OCLMand.put_Boundary((float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
+		m_OCLFrac.put_Boundary(IMAGE_MAND, (float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
 
-		put_MandRect(0, 0, rcMand.right, rcMand.bottom, true);
+		put_MandRect(IMAGE_MAND, 0, 0, rcMand.right, rcMand.bottom, true);
 
 		RECT rcJulia;
 		rcJulia.left = rcMand.right;
@@ -931,7 +1006,8 @@ bool CJuliasmApp::put_MandScreenPct(int iPct)
 		rcJulia.right = rcClient.right;
 		rcJulia.bottom = rcClient.right - rcMand.right;
 
-		put_JuliaRect(rcJulia.left, rcJulia.top, rcJulia.right, rcJulia.bottom, true);
+		put_JuliaRect(IMAGE_JULIA, rcJulia.left, rcJulia.top, rcJulia.right, rcJulia.bottom, true);
+
 		put_InfoRect(rcJulia.left, rcJulia.bottom, rcClient.right, rcClient.bottom, true);
 	}
 
@@ -963,18 +1039,18 @@ bool CJuliasmApp::put_MandScreenPct(int iPct)
 		m_a2 = am + d * rcMand.right / 2.0;
 		m_b1 = bm - d * rcMand.bottom / 2.0;
 		m_b2 = bm + d * rcMand.bottom / 2.0;
-		m_OCLMand.put_Boundary((float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
+		m_OCLFrac.put_Boundary(IMAGE_MAND, (float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
 
 
-		put_MandRect(0, 0, rcMand.right, rcMand.bottom, true);
-		put_JuliaRect(rcMand.right, 0, rcClient.right, rcClient.bottom, true);
+		put_MandRect(IMAGE_MAND, 0, 0, rcMand.right, rcMand.bottom, true);
+		put_JuliaRect(IMAGE_JULIA, rcMand.right, 0, rcClient.right, rcClient.bottom, true);
 		put_InfoRect(0, rcMand.bottom, rcMand.right, rcClient.bottom, true);
 	}
 	// Option 3: Show only the julia set
 	else if (iPct == 0)
 	{
-		put_MandRect(0, 0, 0, 0, false);
-		put_JuliaRect(rcClient.left, rcClient.top, rcClient.right, rcClient.bottom, true);
+		put_MandRect(IMAGE_MAND, 0, 0, 0, 0, false);
+		put_JuliaRect(IMAGE_JULIA, rcClient.left, rcClient.top, rcClient.right, rcClient.bottom, true);
 		put_InfoRect(0, 0, 0, 0, false);
 	}
 	return true;
@@ -1041,7 +1117,7 @@ bool CJuliasmApp::handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y)
 				m_DragFractal = FractalType::Julia;
 				m_bDragging = true;
 			}
-			
+
 			//
 			// if the click-drag was over a fractal, then save the beginning state
 			//	for the mouse click, as well as for the Mandelbrot and Julia fractals
@@ -1091,7 +1167,7 @@ bool CJuliasmApp::handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y)
 			m_b1 = m_start_b1 - offset_b;
 			m_b2 = m_start_b2 - offset_b;
 
-			m_OCLMand.put_Boundary((float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
+			m_OCLFrac.put_Boundary(m_pCalcInfo[FractalType::Mand]->iOCLKernelNumber, (float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
 
 			StartCalc(FractalType::Mand);
 			InvalidateRect(hWnd, NULL, FALSE);
@@ -1109,7 +1185,8 @@ bool CJuliasmApp::handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y)
 			m_jd1 = m_start_jd1 - offset_d;
 			m_jd2 = m_start_jd2 - offset_d;
 
-			m_OCLJulia.put_Boundary((float)m_jc1, (float)m_jd1, (float)m_jc2, (float)m_jd2);
+
+			m_OCLFrac.put_Boundary(m_pCalcInfo[FractalType::Julia]->iOCLKernelNumber, (float)m_jc1, (float)m_jd1, (float)m_jc2, (float)m_jd2);
 
 			StartCalc(FractalType::Julia);
 			InvalidateRect(hWnd, NULL, FALSE);
@@ -1120,9 +1197,10 @@ bool CJuliasmApp::handle_mousemove(HWND hWnd, WPARAM wParam, WORD x, WORD y)
 
 	// update the Julia set location with the numerical (not pixel) location of the mouse pointer
 	put_JuliaPoint(
+		m_pCalcInfo[FractalType::Julia]->iOCLKernelNumber,
 		(m_a1 + (m_a2 - m_a1) / get_MandWidth() * x),
 		(m_b1 + (m_b2 - m_b1) / get_MandHeight() * y)
-	);
+		);
 	PostCalc(FractalType::Julia);
 
 	return true;
@@ -1161,7 +1239,7 @@ void CJuliasmApp::ZoomInMand(int x, int y, float fAmount)
 		m_b2 = m_b1 + height;
 
 		// share the new bounding box with the OpenCL object
-		m_OCLMand.put_Boundary((float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
+		m_OCLFrac.put_Boundary(m_pCalcInfo[FractalType::Mand]->iOCLKernelNumber, (float)m_a1, (float)m_b1, (float)m_a2, (float)m_b2);
 
 		// recalculate the image
 		PostCalc(FractalType::Mand);
@@ -1200,7 +1278,7 @@ void CJuliasmApp::ZoomInJulia(int x, int y, float fAmount)
 		m_jd2 = m_jd1 + height;
 
 		// share the new bounding box with the OpenCL object
-		m_OCLJulia.put_Boundary((float)m_jc1, (float)m_jd1, (float)m_jc2, (float)m_jd2);
+		m_OCLFrac.put_Boundary(m_pCalcInfo[FractalType::Julia]->iOCLKernelNumber, (float)m_jc1, (float)m_jd1, (float)m_jc2, (float)m_jd2);
 
 		// recalculate the image
 		PostCalc(FractalType::Julia);
@@ -1215,6 +1293,7 @@ void CJuliasmApp::ZoomInJulia(int x, int y, float fAmount)
 bool CJuliasmApp::handle_mousewheel(HWND hWnd, WORD wvKeys, int iRotationAmount, int x, int y)
 {
 	POINT p;
+	float fZoomPct = 0.20f;
 	
 	p.x = x;
 	p.y = y;
@@ -1222,15 +1301,24 @@ bool CJuliasmApp::handle_mousewheel(HWND hWnd, WORD wvKeys, int iRotationAmount,
 
 	iRotationAmount = iRotationAmount / WHEEL_DELTA;
 
+	if (wvKeys & MK_CONTROL)
+	{
+		fZoomPct *= 0.10f;
+	}
+	if (wvKeys & MK_SHIFT)
+	{
+		fZoomPct *= 2.0f;
+	}
+
 	if (PtInRect(&m_rcMand, p))
 	{
-		float fAmt = (iRotationAmount < 0) ? 1.2f : 0.8f;
+		float fAmt = (iRotationAmount < 0) ? (1.0f + fZoomPct) : (1.0f - fZoomPct);
 		ZoomInMand(-1, -1, fAmt);
 		return true;
 	}
 	else if (PtInRect(&m_rcJulia, p))
 	{
-		float fAmt = (iRotationAmount < 0) ? 1.2f : 0.8f;
+		float fAmt = (iRotationAmount < 0) ? (1.0f + fZoomPct) : (1.0f - fZoomPct);
 		ZoomInJulia(-1, -1, fAmt);
 		return true;
 	}
@@ -1278,7 +1366,17 @@ void CJuliasmApp::UpdateCalcPlatformMenuMand(void)
 	}
 
 	// uncheck all of the platform menu items
-	CheckMenuRadioItem(GetMenu(get_hWnd()), IDM_CALCULATE_MAND_MIN, IDM_CALCULATE_MAND_MAX, iMenuItem, MF_BYCOMMAND);
+	HWND hWnd = get_hWnd();
+	if (hWnd != NULL)
+	{
+		assert(hWnd != NULL);
+		HMENU hMenu = GetMenu(hWnd);
+		if (hMenu != NULL)
+		{
+			assert(hMenu != NULL);
+			CheckMenuRadioItem(GetMenu(get_hWnd()), IDM_CALCULATE_MAND_MIN, IDM_CALCULATE_MAND_MAX, iMenuItem, MF_BYCOMMAND);
+		}
+	}
 
 }
 //
@@ -1296,8 +1394,26 @@ void CJuliasmApp::UpdateCalcPlatformMenuJulia(void)
 	case AVX32:	iMenuItem = IDM_CALCULATE_JULIA_AVX32; break;
 	case AVX64:	iMenuItem = IDM_CALCULATE_JULIA_AVX64; break;
 	case FMA:	iMenuItem = IDM_CALCULATE_JULIA_FMA; break;
-	case OpenCL_CPU:	iMenuItem = IDM_CALCULATE_JULIA_OPENCL_CPU; break;
-	case OpenCL_GPU:	iMenuItem = IDM_CALCULATE_JULIA_OPENCL_GPU; break;
+	case OpenCL_CPU:
+		switch (m_pCalcInfo[FractalType::Julia]->iFracFormula)
+		{
+		case FormMand: iMenuItem = IDM_CALCULATE_JULIA_OPENCL_CPU; break;
+		case FormSin: iMenuItem = IDM_CALCULATE_SIN_JULIA_OPENCL_CPU; break;
+		case FormCos: iMenuItem = IDM_CALCULATE_COS_JULIA_OPENCL_CPU; break;
+		case FormExp: iMenuItem = IDM_CALCULATE_EXP_JULIA_OPENCL_CPU; break;
+		}
+		break;
+
+	case OpenCL_GPU:
+		switch (m_pCalcInfo[FractalType::Julia]->iFracFormula)
+		{
+		case FormMand: iMenuItem = IDM_CALCULATE_JULIA_OPENCL_GPU; break;
+		case FormSin: iMenuItem = IDM_CALCULATE_SIN_JULIA_OPENCL_GPU; break;
+		case FormCos: iMenuItem = IDM_CALCULATE_COS_JULIA_OPENCL_GPU; break;
+		case FormExp: iMenuItem = IDM_CALCULATE_EXP_JULIA_OPENCL_GPU; break;
+		}
+		break;
+
 	default:	iMenuItem = 0; break;
 	}
 
@@ -1334,7 +1450,7 @@ void CJuliasmApp::put_MaxIterationsMand(int iMaxIterationsMand)
 	}
 
 	m_iMaxIterationsMand = iMaxIterationsMand;
-	m_OCLMand.put_MaxIterations(m_iMaxIterationsMand);
+	m_OCLFrac.put_MaxIterations(m_iMaxIterationsMand, m_pCalcInfo[FractalType::Mand]->iOCLKernelNumber);
 
 	// uncheck all of the platform menu items
 	CheckMenuRadioItem(GetMenu(get_hWnd()), IDM_ITERATIONS_MAND_64, IDM_ITERATIONS_MAND_32767, iMenuItem, MF_BYCOMMAND);
@@ -1359,7 +1475,7 @@ void CJuliasmApp::put_MaxIterationsJulia(int iMaxIterationsJulia)
 	}
 
 	m_iMaxIterationsJulia = iMaxIterationsJulia;
-	m_OCLJulia.put_MaxIterations(m_iMaxIterationsJulia);
+	m_OCLFrac.put_MaxIterations(m_iMaxIterationsJulia, m_pCalcInfo[FractalType::Julia]->iOCLKernelNumber);
 
 	// uncheck all of the platform menu items
 	CheckMenuRadioItem(GetMenu(get_hWnd()), IDM_ITERATIONS_JULIA_64, IDM_ITERATIONS_JULIA_32767, iMenuItem, MF_BYCOMMAND);
@@ -1386,25 +1502,18 @@ char *CJuliasmApp::get_CalcPlatformName(char *szBuf, size_t iLen, CalcPlatform c
 	return szBuf;
 }
 
-bool CJuliasmApp::put_OCLDeviceType(COpenCLImage *ocl, cl_device_type oclDeviceType, int iImageWidth, int iImageHeight)
+bool CJuliasmApp::put_OCLDeviceType(COpenCLImage *ocl, cl_device_type oclDeviceType, int iKernelIndex, int iImageIndex, int iImageWidth, int iImageHeight)
 {
 	//
 	// reset the OpenCL environment
 	//
-	if (ocl->get_CurrentDeviceType() != oclDeviceType)
+	if (ocl->get_CurrentDeviceTypeByKernel(iKernelIndex) != oclDeviceType)
 	{
 		HCURSOR hCursor = LoadCursor(NULL, IDC_WAIT);
 		HCURSOR hOldCursor = SetCursor(hCursor);
-		ocl->UseDeviceByType(oclDeviceType);
-		if (false == ocl->PrepareProgram())
-		{
-			char szBuf[128];
-			sprintf_s(szBuf, _countof(szBuf), "Error %d preparing OpenCL program.", ocl->get_LastBuildStatus());
-			MessageBox(m_hWnd, szBuf, "Error", MB_ICONSTOP | MB_OK);
-			exit(0); //RAP: using exit for now, as this is currently an unrecoverable error
-			return false;
-		}
-		if (false == ocl->put_ImageSize(iImageWidth, iImageHeight))
+		ocl->UseDeviceByType(iKernelIndex, oclDeviceType);
+
+		if (false == ocl->put_ImageSize(iImageIndex, iImageWidth, iImageHeight))
 		{
 			MessageBox(m_hWnd, "Unable to resize OpenCL image.", "Error", MB_ICONSTOP | MB_OK);
 			exit(0);	//RAP: using exit for now, as this is currently an unrecoverable error
@@ -1418,41 +1527,38 @@ bool CJuliasmApp::put_OCLDeviceType(COpenCLImage *ocl, cl_device_type oclDeviceT
 bool CJuliasmApp::put_CalcPlatform(FractalType ft, FractalFormula ff, CalcPlatform cp)
 {
 	// find the specified combination of FtactalType and CalcPlatform
-	int i;
-	TCalcInfo *ci, *found_ci;
-	for (i = 0, ci = m_ci, found_ci = NULL; i < sizeof(m_ci) / sizeof(m_ci[0]); ++i, ++ci)
-	{
-		if (ci->iFracType == ft && ci->iFracFormula == ff && ci->iCalcPlatform == cp)
-		{
-			found_ci = ci;
-			break;
-		}
-	}
+	m_pCalcInfo[ft] = NULL;
+	TCalcInfo *found_ci = get_CalcInfo(ft, ff, cp);
 
 	// bail out if the requested combination of Fractal Type and Calc Platform was not found
 	if (found_ci == NULL)
 		return false;
 
-	// setup the calculation variables
-	m_CalcPlatform[ft]			= found_ci->iCalcPlatform;
-	m_FractalFormula[ft]		= found_ci->iFracFormula;
-	m_CalcCompleteMessage[ft]	= found_ci->iThreadCompleteMessage;
-	m_CalcCompleteWParam[ft]	= found_ci->iThreadCompleteWParam;
-	m_CalcCompleteLParam[ft]	= MAKELPARAM((WORD)ft, (WORD)cp);
-	m_iCalcThreadCount[ft]		= found_ci->iThreadCount;
-	m_pCalculateFunc[ft]		= found_ci->pCalculateMandFunc;
-	m_iCalcKernel[ft]			= found_ci->iOCLKernelNumber;
+	m_pCalcInfo[ft] = found_ci;
 
 	// update the OpenCL objects with the desired device type
 	if (cp == CalcPlatform::OpenCL_CPU || cp == CalcPlatform::OpenCL_GPU)
 	{
 		if (ft == FractalType::Julia)
-			put_OCLDeviceType(&m_OCLJulia, found_ci->oclDeviceType, get_JuliaWidth(), get_JuliaHeight());
+		{
+			int k = m_pCalcInfo[FractalType::Julia]->iOCLKernelNumber;
+			put_OCLDeviceType(&m_OCLFrac, found_ci->iOCLDeviceType, k, IMAGE_JULIA, get_JuliaWidth(), get_JuliaHeight());
+			m_OCLFrac.put_MaxIterations(m_iMaxIterationsJulia, k);
+			m_OCLFrac.put_Boundary(k, m_jc1, m_jd1, m_jc2, m_jd2);
+			m_OCLFrac.put_ConstPoint(k, m_ja, m_jb);
+		}
 		else
-			put_OCLDeviceType(&m_OCLMand, found_ci->oclDeviceType, get_MandWidth(), get_MandHeight());
+		{
+			int k = m_pCalcInfo[FractalType::Mand]->iOCLKernelNumber;
+			put_OCLDeviceType(&m_OCLFrac, found_ci->iOCLDeviceType, found_ci->iOCLKernelNumber, IMAGE_MAND, get_MandWidth(), get_MandHeight());
+			m_OCLFrac.put_MaxIterations(m_iMaxIterationsMand, k);
+			m_OCLFrac.put_Boundary(k, m_a1, m_b1, m_a2, m_b2);
+		}
 	}
-	
+
+	UpdateCalcPlatformMenuJulia();
 	UpdateCalcPlatformMenuMand();
+
 
 	return true;
 }
